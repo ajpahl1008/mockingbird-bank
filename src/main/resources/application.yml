@@ -2,9 +2,12 @@ spring:
   application:
     name: mockingbird-bank
   datasource:
-    url: jdbc:postgresql://localhost:5432/mydatabase
-    username: admin
-    password: secret
+    # Local dev fallback only. Override via SPRING_DATASOURCE_URL/USERNAME/PASSWORD
+    # env vars for anything beyond a laptop - see .env.example for the Docker path
+    # and k8s/01-postgres-secret.yaml for the cluster path.
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/mydatabase}
+    username: ${SPRING_DATASOURCE_USERNAME:admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:secret}
   jpa:
     hibernate:
       ddl-auto: update
@@ -14,7 +17,7 @@ spring:
         format_sql: true
 
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 
 vaadin:
   launch-browser: true
