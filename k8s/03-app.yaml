@@ -47,6 +47,11 @@ kind: Service
 metadata:
   name: mockingbird-app
   namespace: mockingbird-bank
+  annotations:
+    # Pin the IP MetalLB already handed out (from default-pool) so it
+    # survives a Service recreate instead of drifting to another free
+    # address in the pool. Drop this if the app ever needs to move.
+    metallb.io/loadBalancerIPs: 192.168.0.183
 spec:
   selector:
     app: mockingbird-app
