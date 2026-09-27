@@ -15,8 +15,10 @@ spec:
     spec:
       containers:
         - name: app
-          # Build and push this from the Dockerfile at the repo root.
-          image: mockingbird-bank:local
+          # Substituted by Harness at deploy time with the resolved
+          # artifact (ajpahl1008/mockingbird-bank:<tag>) from the
+          # Service's artifact source - see the Harness Service definition.
+          image: <+artifact.image>
           ports:
             - containerPort: 8080
           envFrom:
@@ -26,13 +28,13 @@ spec:
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: mockingbird-postgres
-                  key: POSTGRES_USER
+                  name: mockingbird-db-credentials
+                  key: SPRING_DATASOURCE_USERNAME
             - name: SPRING_DATASOURCE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mockingbird-postgres
-                  key: POSTGRES_PASSWORD
+                  name: mockingbird-db-credentials
+                  key: SPRING_DATASOURCE_PASSWORD
           readinessProbe:
             httpGet:
               path: /actuator/health

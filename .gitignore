@@ -27,4 +27,3 @@ src/main/bundles/
 # Real secrets - copy from the checked-in *.example templates and fill
 # in actual values locally; never commit the result.
 .env
-k8s/01-postgres-secret.yaml
