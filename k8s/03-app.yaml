@@ -15,10 +15,10 @@ spec:
     spec:
       containers:
         - name: app
-          # Substituted by Harness at deploy time with the resolved
-          # artifact (ajpahl1008/mockingbird-bank:<tag>) from the
-          # Service's artifact source - see the Harness Service definition.
-          image: <+artifact.image>
+          # Go-templated from values.yaml (Harness only resolves <+...>
+          # expressions there, not directly inside manifests) - resolves to
+          # the artifact from the Service's artifact source at deploy time.
+          image: {{ .Values.image }}
           ports:
             - containerPort: 8080
           envFrom:

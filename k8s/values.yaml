@@ -1,0 +1,7 @@
+# Harness values file: this is the ONLY place Harness expressions get
+# resolved. The actual manifests (00/01/02/03) are Go templates that read
+# these via {{ .Values.xxx }} - Harness does not resolve <+...> expressions
+# written directly inside a raw manifest.
+image: <+artifact.image>
+dbUsername: admin
+dbPassword: <+secrets.getValue("postgres-lab-secret")>
