@@ -4,17 +4,28 @@ spring:
   datasource:
     # Local dev fallback only. Override via SPRING_DATASOURCE_URL/USERNAME/PASSWORD
     # env vars for anything beyond a laptop - see .env.example for the Docker path
-    # and k8s/01-postgres-secret.yaml for the cluster path.
+    # and k8s/01-postgres-secret.yaml.example for the cluster path.
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/mydatabase}
     username: ${SPRING_DATASOURCE_USERNAME:admin}
     password: ${SPRING_DATASOURCE_PASSWORD:secret}
   jpa:
     hibernate:
-      ddl-auto: update
+      # Flyway (below) owns the schema now; Hibernate just checks its
+      # entity mappings still match what Flyway created.
+      ddl-auto: validate
     open-in-view: false
     properties:
       hibernate:
         format_sql: true
+  flyway:
+    # Anyone who already ran this app pre-Flyway has these exact tables
+    # from ddl-auto=update, but no flyway_schema_history. Without this,
+    # V1 (which recreates that same schema) fails with "relation already
+    # exists" on every pre-existing database. baseline-version defaults
+    # to 1, matching V1, so this only marks V1 as already-applied on a
+    # non-empty schema - a genuinely empty database (e.g. a fresh
+    # Testcontainers or k8s Postgres) still runs V1 normally.
+    baseline-on-migrate: true
 
 server:
   port: ${SERVER_PORT:8080}
