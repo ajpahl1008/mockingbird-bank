@@ -1,10 +1,11 @@
-# Build stage - uses a Gradle-provided image since this project doesn't
-# check in the gradle wrapper; swap for your own base image if you have
-# an internal one with Gradle + JDK 21 preinstalled.
-FROM gradle:8.14-jdk21 AS build
+# Build stage - gradlew pins the exact Gradle version (see
+# gradle/wrapper/gradle-wrapper.properties), so any JDK 21 image works
+# here; no need for a Gradle-specific base image, and no risk of the
+# build using a different Gradle version than local/CI does.
+FROM eclipse-temurin:21-jdk AS build
 WORKDIR /workspace
 COPY . .
-RUN gradle --no-daemon -Pvaadin.productionMode=true clean bootJar
+RUN ./gradlew --no-daemon -Pvaadin.productionMode=true clean bootJar
 
 # Run stage
 FROM eclipse-temurin:21-jre
