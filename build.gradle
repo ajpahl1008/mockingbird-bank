@@ -23,6 +23,10 @@ repositories {
 dependencyManagement {
     imports {
         mavenBom "com.vaadin:vaadin-bom:25.3.0"
+        // Kept in sync with the testcontainers.version Spring Boot 4.1.1
+        // itself manages; io.spring.dependency-management doesn't resolve
+        // that nested BOM import automatically in this setup.
+        mavenBom "org.testcontainers:testcontainers-bom:2.0.5"
     }
 }
 
@@ -40,6 +44,10 @@ dependencies {
     developmentOnly 'com.vaadin:vaadin-dev'
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-webmvc-test'
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
     testImplementation 'com.vaadin:vaadin-testbench-junit5'
 }
 
