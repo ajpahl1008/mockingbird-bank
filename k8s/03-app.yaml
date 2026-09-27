@@ -53,4 +53,7 @@ spec:
   ports:
     - port: 80
       targetPort: 8080
-  type: ClusterIP
+  # LoadBalancer - MetalLB (default-pool, 192.168.0.180-189) hands this a
+  # real LAN IP, same as the elastic/envoy/portainer services. ClusterIP
+  # only worked from inside the cluster, which is why it wasn't reachable.
+  type: LoadBalancer
