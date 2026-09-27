@@ -6,4 +6,6 @@ metadata:
 data:
   # External Postgres instance - see the "postgresdb" Harness connector.
   # This is not a Secret because a JDBC host/port/db name isn't sensitive.
-  SPRING_DATASOURCE_URL: jdbc:postgresql://192.168.0.148:5432/metamanagement
+  # Dedicated database for this app (not the shared "metamanagement" DB) -
+  # must exist on the Postgres server before Flyway can create tables in it.
+  SPRING_DATASOURCE_URL: jdbc:postgresql://192.168.0.148:5432/mockingbirdbank
