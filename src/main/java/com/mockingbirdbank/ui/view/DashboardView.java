@@ -12,6 +12,7 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
+import jakarta.annotation.security.PermitAll;
 
 import java.math.BigDecimal;
 import java.text.NumberFormat;
@@ -24,6 +25,7 @@ import java.util.Locale;
  */
 @Route(value = "accounts", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
+@PermitAll
 public class DashboardView extends VerticalLayout {
 
     private static final NumberFormat USD = NumberFormat.getCurrencyInstance(Locale.US);

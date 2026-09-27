@@ -8,16 +8,31 @@ import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
+import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.vaadin.flow.theme.lumo.LumoUtility;
+import jakarta.annotation.security.PermitAll;
 
 /**
  * The dark top bar shared by every view: the bird wordmark on the left,
- * the signed-in holder's name and a (currently no-op) sign-out button on
- * the right. Individual views render everything below it.
+ * the signed-in holder's name and a sign-out button (wired to Spring
+ * Security's logout via Vaadin's {@link AuthenticationContext}) on the
+ * right. Individual views render everything below it.
+ *
+ * <p>Vaadin's navigation access control requires a parent layout to grant
+ * access independently of its views - without {@code @PermitAll} here,
+ * every view routed through this layout would 403 even if the view itself
+ * is {@code @PermitAll}, because an unannotated layout defaults to
+ * {@code @DenyAll}.
  */
+@PermitAll
 public class MainLayout extends AppLayout {
 
-    public MainLayout(AccountService accountService) {
+    // AuthenticationContext isn't Serializable by design; Vaadin view
+    // fields that hold it must be transient.
+    private final transient AuthenticationContext authenticationContext;
+
+    public MainLayout(AccountService accountService, AuthenticationContext authenticationContext) {
+        this.authenticationContext = authenticationContext;
         AccountHolder holder = accountService.currentHolder();
 
         BirdMark mark = new BirdMark();
@@ -36,6 +51,7 @@ public class MainLayout extends AppLayout {
         Button signOut = new Button("Sign out");
         signOut.getElement().setAttribute("theme", "tertiary");
         signOut.getStyle().set("color", "var(--mb-ivory)").set("border", "1px solid #3C4E6E");
+        signOut.addClickListener(click -> authenticationContext.logout());
 
         HorizontalLayout right = new HorizontalLayout(greeting, signOut);
         right.setAlignItems(FlexLayout.Alignment.CENTER);

@@ -3,13 +3,17 @@ package com.mockingbirdbank.service;
 import com.mockingbirdbank.model.Account;
 import com.mockingbirdbank.model.AccountHolder;
 import com.mockingbirdbank.model.AccountType;
-import com.mockingbirdbank.repository.AccountHolderRepository;
+import com.mockingbirdbank.model.AppUser;
 import com.mockingbirdbank.repository.AccountRepository;
+import com.mockingbirdbank.repository.AppUserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -24,7 +28,7 @@ import static org.mockito.Mockito.when;
 class AccountServiceTest {
 
     @Mock
-    private AccountHolderRepository holderRepository;
+    private AppUserRepository appUserRepository;
     @Mock
     private AccountRepository accountRepository;
 
@@ -32,20 +36,33 @@ class AccountServiceTest {
 
     @BeforeEach
     void setUp() {
-        accountService = new AccountService(holderRepository, accountRepository);
+        accountService = new AccountService(appUserRepository, accountRepository);
+    }
+
+    @AfterEach
+    void clearSecurityContext() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void authenticateAs(String username) {
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(username, "n/a", List.of()));
     }
 
     @Test
-    void currentHolderReturnsTheOnlySeededHolder() {
+    void currentHolderResolvesHolderLinkedToSignedInUser() {
         AccountHolder holder = new AccountHolder("Jordan Ellis", "jordan.ellis@example.com");
-        when(holderRepository.findAll()).thenReturn(List.of(holder));
+        AppUser appUser = new AppUser("jordan.ellis", "hashed", holder);
+        authenticateAs("jordan.ellis");
+        when(appUserRepository.findByUsername("jordan.ellis")).thenReturn(Optional.of(appUser));
 
         assertThat(accountService.currentHolder()).isSameAs(holder);
     }
 
     @Test
-    void currentHolderFailsFastWhenDatabaseIsEmpty() {
-        when(holderRepository.findAll()).thenReturn(List.of());
+    void currentHolderFailsFastWhenSignedInUserHasNoLinkedAccount() {
+        authenticateAs("ghost");
+        when(appUserRepository.findByUsername("ghost")).thenReturn(Optional.empty());
 
         assertThatThrownBy(accountService::currentHolder)
                 .isInstanceOf(IllegalStateException.class);

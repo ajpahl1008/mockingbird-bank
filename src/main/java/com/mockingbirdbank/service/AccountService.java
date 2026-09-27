@@ -2,8 +2,10 @@ package com.mockingbirdbank.service;
 
 import com.mockingbirdbank.model.Account;
 import com.mockingbirdbank.model.AccountHolder;
-import com.mockingbirdbank.repository.AccountHolderRepository;
+import com.mockingbirdbank.model.AppUser;
 import com.mockingbirdbank.repository.AccountRepository;
+import com.mockingbirdbank.repository.AppUserRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,21 +16,20 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class AccountService {
 
-    private final AccountHolderRepository holderRepository;
+    private final AppUserRepository appUserRepository;
     private final AccountRepository accountRepository;
 
-    public AccountService(AccountHolderRepository holderRepository, AccountRepository accountRepository) {
-        this.holderRepository = holderRepository;
+    public AccountService(AppUserRepository appUserRepository, AccountRepository accountRepository) {
+        this.appUserRepository = appUserRepository;
         this.accountRepository = accountRepository;
     }
 
-    /**
-     * v1 is single-tenant: there's exactly one signed-in-as holder.
-     * Swap this for a real authentication lookup once login exists.
-     */
+    /** Resolves the holder linked to whoever Spring Security says is signed in. */
     public AccountHolder currentHolder() {
-        return holderRepository.findAll().stream().findFirst()
-                .orElseThrow(() -> new IllegalStateException("No account holder seeded"));
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        return appUserRepository.findByUsername(username)
+                .map(AppUser::getHolder)
+                .orElseThrow(() -> new IllegalStateException("No account holder linked to user: " + username));
     }
 
     public List<Account> accountsFor(AccountHolder holder) {

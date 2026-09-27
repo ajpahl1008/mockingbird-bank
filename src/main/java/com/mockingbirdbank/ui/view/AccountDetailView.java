@@ -15,6 +15,7 @@ import com.vaadin.flow.router.BeforeEvent;
 import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.NotFoundException;
 import com.vaadin.flow.router.Route;
+import jakarta.annotation.security.PermitAll;
 
 import java.time.format.DateTimeFormatter;
 import java.text.NumberFormat;
@@ -26,6 +27,7 @@ import java.util.Locale;
  * "Account Detail" artboard in the design mockup.
  */
 @Route(value = "accounts", layout = MainLayout.class)
+@PermitAll
 public class AccountDetailView extends VerticalLayout implements HasUrlParameter<Long> {
 
     private static final NumberFormat USD = NumberFormat.getCurrencyInstance(Locale.US);
