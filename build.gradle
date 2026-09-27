@@ -67,3 +67,21 @@ vaadin {
 test {
     useJUnitPlatform()
 }
+
+// Required by Harness CI Test Intelligence (TI) so it can inject its call-graph
+// agent into the forked test JVM and safely filter to a subset of tests without
+// failing when a given subproject has none of the selected tests.
+// https://developer.harness.io/continuous-integration/troubleshooting-and-resources/ci-articles-and-faqs/articles/gradle-daemon#gradle-version-not-compatible-with-test-intelligence
+tasks.withType(Test) {
+    if (System.getProperty("HARNESS_JAVA_AGENT")) {
+        jvmArgs += [System.getProperty("HARNESS_JAVA_AGENT")]
+    }
+}
+
+gradle.projectsEvaluated {
+    tasks.withType(Test) {
+        filter {
+            setFailOnNoMatchingTests(false)
+        }
+    }
+}
