@@ -1,0 +1,25 @@
+build/
+.gradle/
+out/
+target/
+*.class
+
+# Vaadin generated frontend
+node_modules/
+src/main/frontend/generated/
+vaadin-featureflags.properties
+package.json
+package-lock.json
+tsconfig.json
+types.d.ts
+vite.config.ts
+vite.generated.ts
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+src/main/bundles/

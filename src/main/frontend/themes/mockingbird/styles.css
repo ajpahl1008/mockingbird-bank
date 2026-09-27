@@ -1,0 +1,15 @@
+html {
+  --mb-navy: #12233F;
+  --mb-ivory: #F6F4EE;
+  --mb-ivory-muted: #C9CFDA;
+  --mb-text-muted: #6B7280;
+  --mb-hairline: #E7E2D3;
+}
+
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+vaadin-app-layout::part(navbar) {
+  padding: 0;
+}

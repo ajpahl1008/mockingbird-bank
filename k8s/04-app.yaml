@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mockingbird-app
+  namespace: mockingbird-bank
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mockingbird-app
+  template:
+    metadata:
+      labels:
+        app: mockingbird-app
+    spec:
+      containers:
+        - name: app
+          # Build and push this from the Dockerfile at the repo root.
+          image: mockingbird-bank:local
+          ports:
+            - containerPort: 8080
+          envFrom:
+            - configMapRef:
+                name: mockingbird-app-config
+          env:
+            - name: SPRING_DATASOURCE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mockingbird-postgres
+                  key: POSTGRES_USER
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mockingbird-postgres
+                  key: POSTGRES_PASSWORD
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mockingbird-app
+  namespace: mockingbird-bank
+spec:
+  selector:
+    app: mockingbird-app
+  ports:
+    - port: 80
+      targetPort: 8080
+  type: ClusterIP
