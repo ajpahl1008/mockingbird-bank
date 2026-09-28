@@ -67,9 +67,28 @@ dependencies {
     // (currently spring-boot-starter-actuator) - same rationale as the four
     // dependencies just above.
     implementation 'io.micrometer:micrometer-core'
+    // Circuit-breaking around AccountService/TransactionService's repository
+    // calls - see ResilienceConfig. Pure Java, no Spring Boot integration
+    // module needed (resilience4j-spring-boot3 targets Spring Boot 3's
+    // actuator/autoconfigure APIs, not guaranteed compatible with Spring
+    // Boot 4 yet), so this app registers/wires it explicitly instead.
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.4.0'
+    implementation 'io.github.resilience4j:resilience4j-micrometer:2.4.0'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
+    // `./gradlew buildHealth` flagged this: test sources construct Lombok-annotated model
+    // classes (Account, Transaction, ...) directly, so javac needs Lombok's processor on the
+    // test annotation-processing classpath too, not just main's - it was only getting there
+    // transitively before.
+    testAnnotationProcessor 'org.projectlombok:lombok'
+
+    // Distributed tracing: Spring Boot 4's dedicated OpenTelemetry+OTLP starter (tracing support
+    // moved out of spring-boot-starter-actuator and into its own module in Boot 4). Pulls in the
+    // Micrometer-to-OpenTelemetry bridge and the OTLP exporter; auto-instruments incoming HTTP
+    // requests as spans (see management.tracing.*/management.opentelemetry.* below) purely from
+    // being on the classpath - no application code imports these packages directly.
+    implementation 'org.springframework.boot:spring-boot-starter-opentelemetry'
 
     runtimeOnly 'org.postgresql:postgresql'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
@@ -296,6 +315,8 @@ jacocoTestCoverageVerification {
                 'com.mockingbirdbank.security.*',
                 'com.mockingbirdbank.config.*',
                 'com.mockingbirdbank.analytics.*',
+                'com.mockingbirdbank.resilience.*',
+                'com.mockingbirdbank.observability.*',
             ]
             limit {
                 counter = 'LINE'
@@ -517,4 +538,80 @@ gradle.buildFinished {
                 "SLOW BUILD (${totalMs}ms, over the ${slowBuildThresholdMs}ms tracking "
                         + "threshold) - see ${reportFile} for the slowest tasks.")
     }
+}
+
+// One aggregated, tracked-over-time snapshot of the numbers Checkstyle/PMD/CPD/JaCoCo already
+// computed above - so "is code quality trending up or down" is answered by one small text file
+// instead of opening five separate HTML reports and comparing them by eye across builds. Counts
+// via simple regex over each tool's XML report rather than a full XML parser: these are flat,
+// generated-not-handwritten files, and JaCoCo's XML in particular references an external DTD
+// that a validating/entity-resolving parser would try to fetch over the network on every build.
+gradle.buildFinished {
+    def reportFile = layout.buildDirectory.file("reports/code-quality/summary.txt").get().asFile
+    reportFile.parentFile.mkdirs()
+
+    // These XML reports persist on disk across invocations, so a file existing doesn't mean it's
+    // current - it could be left over from a previous `./gradlew pmdMain` while this build only
+    // ran, say, `test`. taskDurationsMs (populated above by the build-performance tracker, which
+    // every task feeds via doLast) tells us which tasks actually executed *this* build, so a
+    // stale report from a different invocation is correctly reported as "not run this build"
+    // rather than silently presented as fresh.
+    def ranThisBuild = taskDurationsMs.collect { it.name }.toSet()
+
+    def countOpeningTags = { String taskPath, String path, String tag ->
+        if (!ranThisBuild.contains(taskPath)) {
+            return null
+        }
+        def f = file(path)
+        if (!f.exists()) {
+            return null
+        }
+        def matches = (f.text =~ /<${tag}[\s\/>]/)
+        return matches.count
+    }
+
+    def checkstyleMain =
+            countOpeningTags(':checkstyleMain', 'build/reports/checkstyle/main.xml', 'error')
+    def checkstyleTest =
+            countOpeningTags(':checkstyleTest', 'build/reports/checkstyle/test.xml', 'error')
+    def pmdMain = countOpeningTags(':pmdMain', 'build/reports/pmd/main.xml', 'violation')
+    def pmdTest = countOpeningTags(':pmdTest', 'build/reports/pmd/test.xml', 'violation')
+    def cpdDuplicates =
+            countOpeningTags(':cpdCheck', 'build/reports/cpd/cpdCheck.xml', 'duplication')
+
+    // Not "?:" - Groovy's Elvis operator treats 0 as falsy, which would mislabel a genuinely
+    // clean "0 violations" result as "not run this build".
+    def describe = { count -> count == null ? 'not run this build' : count.toString() }
+
+    def lines = []
+    lines << "Code quality summary - ${new Date().format("yyyy-MM-dd'T'HH:mm:ssXXX")}"
+    lines << ''
+    lines << "Checkstyle violations (main):  ${describe(checkstyleMain)}"
+    lines << "Checkstyle violations (test):  ${describe(checkstyleTest)}"
+    lines << "PMD violations (main):         ${describe(pmdMain)}"
+    lines << "PMD violations (test):         ${describe(pmdTest)}"
+    lines << "CPD duplicate blocks:          ${describe(cpdDuplicates)}"
+
+    def jacocoFile = file('build/reports/jacoco/test/jacocoTestReport.xml')
+    if (ranThisBuild.contains(':jacocoTestReport') && jacocoFile.exists()) {
+        // The report-wide LINE counter is JaCoCo's last <counter type="LINE".../> in the file -
+        // every package/class/method one comes first, then this one final total.
+        def lineCounters =
+                (jacocoFile.text =~ /<counter type="LINE" missed="(\d+)" covered="(\d+)"\/>/)
+                        .findAll()
+        if (!lineCounters.isEmpty()) {
+            def last = lineCounters.last()
+            int missed = last[1].toInteger()
+            int covered = last[2].toInteger()
+            int total = missed + covered
+            double pct = total == 0 ? 0.0 : (covered * 100.0 / total)
+            lines << "Line coverage (project-wide): ${String.format('%.1f', pct)}% " +
+                    "(${covered}/${total} lines)"
+        }
+    } else {
+        lines << 'Line coverage (project-wide): not run this build'
+    }
+
+    reportFile.text = lines.join('\n') + '\n'
+    logger.lifecycle("Code quality summary written to ${reportFile}")
 }

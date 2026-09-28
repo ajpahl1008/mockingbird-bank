@@ -10,6 +10,8 @@ import com.mockingbirdbank.model.AccountType;
 import com.mockingbirdbank.model.AppUser;
 import com.mockingbirdbank.repository.AccountRepository;
 import com.mockingbirdbank.repository.AppUserRepository;
+import com.mockingbirdbank.resilience.ResilienceConfig;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
@@ -33,7 +35,11 @@ class AccountServiceTest {
 
     @BeforeEach
     void setUp() {
-        accountService = new AccountService(appUserRepository, accountRepository);
+        accountService =
+                new AccountService(
+                        appUserRepository,
+                        accountRepository,
+                        CircuitBreakerRegistry.of(ResilienceConfig.defaultConfig()));
     }
 
     @AfterEach

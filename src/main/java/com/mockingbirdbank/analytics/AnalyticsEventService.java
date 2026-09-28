@@ -1,11 +1,13 @@
 package com.mockingbirdbank.analytics;
 
+import com.mockingbirdbank.observability.CorrelationIdFilter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
 /**
@@ -75,6 +77,13 @@ public class AnalyticsEventService {
         fields.put("outcome", outcome);
         if (reason != null) {
             fields.put("reason", reason);
+        }
+        // Same ID CorrelationIdFilter put in MDC for this request/response - so this line is
+        // traceable back to the exact request that produced it without relying on nearby
+        // timestamps in a different log stream.
+        String correlationId = MDC.get(CorrelationIdFilter.MDC_KEY);
+        if (correlationId != null) {
+            fields.put("correlationId", correlationId);
         }
         if (attributes != null) {
             fields.putAll(attributes);

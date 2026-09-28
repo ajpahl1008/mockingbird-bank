@@ -30,6 +30,15 @@ spring:
 server:
   port: ${SERVER_PORT:8080}
 
+logging:
+  pattern:
+    # Spring Boot's documented hook for adding MDC values next to the log level -
+    # CorrelationIdFilter puts correlationId in MDC per request; traceId/spanId are populated
+    # automatically by Micrometer Tracing (see management.tracing below) for the duration of
+    # a traced operation, so a log line and the distributed trace it happened inside of can be
+    # cross-referenced in either direction.
+    level: '%5p [%X{correlationId:-},%X{traceId:-},%X{spanId:-}]'
+
 vaadin:
   launch-browser: true
 
@@ -37,9 +46,37 @@ management:
   endpoints:
     web:
       exposure:
-        # health stays public (see SecurityConfig); featureflags is
-        # read-only ops visibility, reachable once authenticated.
-        include: health,featureflags
+        # health stays public (see SecurityConfig); featureflags/profiling
+        # are ops-facing, reachable once authenticated.
+        include: health,featureflags,profiling
+  tracing:
+    sampling:
+      # This app is small enough that 100% sampling isn't a cost/volume concern - trace every
+      # request rather than risk missing the one that mattered. A busier deployment would dial
+      # this down (e.g. 0.1) via MANAGEMENT_TRACING_SAMPLING_PROBABILITY.
+      probability: ${MANAGEMENT_TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          # Spring Boot's own default if unset - a collector at this address is optional, not
+          # required: with nothing listening there, the OTLP exporter just fails to send spans
+          # in the background (no impact on requests, nothing thrown into application code).
+          # Point it at a real collector (Jaeger, Tempo, Datadog agent, ...) via this env var to
+          # actually collect traces - see AGENTS.md's "Distributed tracing" section for how to
+          # verify that locally against a throwaway Jaeger container.
+          endpoint: ${MANAGEMENT_OPENTELEMETRY_TRACING_EXPORT_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
+  otlp:
+    metrics:
+      export:
+        # spring-boot-starter-opentelemetry pulls in an OTLP *metrics* registry alongside
+        # tracing (a separate Micrometer feature under its own, unrenamed management.otlp.*
+        # namespace), which otherwise logs a WARN every minute trying to push metrics to a
+        # collector that in this app's case doesn't speak the metrics half of OTLP (Jaeger
+        # doesn't). This app already has its own metrics story (Micrometer's product.events
+        # counter, JVM/HTTP metrics via /actuator/metrics) - only distributed tracing is wanted
+        # from this dependency, so its bundled metrics exporter is switched off explicitly.
+        enabled: false
 
 # Defaults match today's actual behavior - see FeatureFlagsProperties and
 # AGENTS.md's "Feature flags" section. Override per-environment via

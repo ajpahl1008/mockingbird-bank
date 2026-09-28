@@ -50,6 +50,17 @@ jobs:
           path: build/reports/build-performance/
           retention-days: 14
 
+      # Only the lint/duplication counts are meaningful from this job (it doesn't run tests, so
+      # coverage shows "not run this build" here) - the test job below uploads its own
+      # complementary half with the coverage number and "not run this build" for these.
+      - name: Upload code quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-fast-checks
+          path: build/reports/code-quality/
+          retention-days: 14
+
   # Slower: full test suite (including the Testcontainers-backed integration
   # tests, which need Docker) plus coverage threshold enforcement. Runs in
   # parallel with fast-checks rather than after it, so this job's longer
@@ -97,3 +108,41 @@ jobs:
           name: build-performance-test
           path: build/reports/build-performance/
           retention-days: 14
+
+      # Complementary half of fast-checks' upload above: this job's -x flags skip
+      # checkstyle/PMD/CPD, so only the coverage number is meaningful here.
+      - name: Upload code quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: code-quality-test
+          path: build/reports/code-quality/
+          retention-days: 14
+
+  # A broken master isn't something anyone should have to notice by happening to check the
+  # Actions tab - post it to Slack. Scoped to push (not pull_request) so a contributor's PR
+  # failing doesn't page anyone; that's already visible directly in the PR's own checks.
+  notify-on-failure:
+    name: Notify Slack on master failure
+    needs: [fast-checks, test]
+    if: always() && github.event_name == 'push' && (needs.fast-checks.result == 'failure' || needs.test.result == 'failure')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post failure to Slack
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERTS_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "SLACK_ALERTS_WEBHOOK_URL secret not set - skipping Slack notification." >&2
+            exit 0
+          fi
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          failed_job="fast-checks"
+          if [ "${{ needs.test.result }}" = "failure" ]; then
+            failed_job="test"
+          fi
+          text=":red_circle: *CI failed on master* (job: \`$failed_job\`)
+          <$run_url|View run> - commit \`${{ github.sha }}\` by ${{ github.actor }}"
+          payload=$(jq -n --arg text "$text" '{text: $text}')
+          curl -sf -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"

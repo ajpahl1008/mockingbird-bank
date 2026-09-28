@@ -23,15 +23,15 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // Actuator health has to stay reachable without a session - the k8s
         // readiness probe and CI smoke checks both hit it unauthenticated.
-        // featureflags is ops-facing, not public - VaadinSecurityConfigurer
-        // denies anything not explicitly matched here, so this rule exists
-        // to make it reachable at all, not to loosen it: it still requires
-        // an authenticated session.
+        // featureflags/profiling are ops-facing, not public -
+        // VaadinSecurityConfigurer denies anything not explicitly matched
+        // here, so this rule exists to make them reachable at all, not to
+        // loosen anything: they still require an authenticated session.
         http.authorizeHttpRequests(
                 auth ->
                         auth.requestMatchers("/actuator/health/**")
                                 .permitAll()
-                                .requestMatchers("/actuator/featureflags")
+                                .requestMatchers("/actuator/featureflags", "/actuator/profiling")
                                 .authenticated());
 
         http.with(

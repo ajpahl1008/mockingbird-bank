@@ -152,8 +152,8 @@ browser fixture - so coverage is tracked but not gated there. Instead
 
 - A 30% project-wide line-coverage floor, so overall coverage can't regress.
 - A 90% per-class line-coverage minimum on the business logic packages
-  (`model`, `service`, `security`, `config`, `analytics`), which sit at
-  94-100% today.
+  (`model`, `service`, `security`, `config`, `analytics`, `resilience`,
+  `observability`), which sit at 92-100% today.
 
 ### Interactive QA (browser-driven smoke test)
 
@@ -344,6 +344,74 @@ step needed.
   are exempt, and closing is one click to undo. Keeps an abandoned backlog
   from just accumulating silently.
 
+## Observability & resilience
+
+- **Circuit breakers**: `AccountService`/`TransactionService` wrap their repository calls with a
+  named Resilience4j circuit breaker each (`"accounts"`/`"transactions"`,
+  `com.mockingbirdbank.resilience.ResilienceConfig`) - 50% failure threshold over a sliding window
+  of 10 calls, minimum 10 calls before it can trip, 10s wait before a half-open trial. Once open,
+  further calls fail immediately with `ServiceUnavailableException` instead of piling up waiting
+  on a slow/down database; `CircuitBreakerBehaviorTest` verifies the real trip/recover behavior
+  end-to-end (a repository that genuinely fails every call, not a mocked breaker). Metrics are
+  tagged into Micrometer (`resilience4j.circuitbreaker.*`) via `TaggedCircuitBreakerMetrics`.
+- **Profiling**: `ProfilingEndpoint` (`com.mockingbirdbank.observability`) exposes a custom
+  Actuator endpoint at `/actuator/profiling` (authenticated, see `SecurityConfig`) backed by the
+  JDK's own Flight Recorder - `GET` for status, `POST` to start a recording, `DELETE` to stop it
+  and write a real `.jfr` file (default `${java.io.tmpdir}/mockingbird-bank-jfr`, override via
+  `mockingbird.profiling.output-dir`). No extra agent or profiler dependency needed; open the
+  resulting file in VisualVM/JDK Mission Control.
+- **Error tracking with context**: `CorrelationIdFilter` puts a correlation ID (reused from an
+  incoming `X-Correlation-Id` header, or freshly generated) into SLF4J MDC for every request and
+  echoes it back as a response header. `logging.pattern.level` includes it
+  (`%X{correlationId:-}`) so every regular log line carries it, and `AnalyticsEventService`
+  includes it in its own structured event lines too - so a user-facing error and every log line
+  written while handling that same request can be tied together with one ID, not just a
+  timestamp.
+- **Code quality metrics**: every build writes `build/reports/code-quality/summary.txt` -
+  Checkstyle/PMD/CPD violation counts plus project-wide JaCoCo line coverage, tracked over time
+  the same way `build/reports/build-performance/summary.txt` is (see below). Each count only
+  reflects the *current* build (backed by the same task-duration tracking that build performance
+  uses) - a
+  count is "not run this build" rather than a stale number left over from a previous, different
+  Gradle invocation. CI uploads it as a `code-quality-*` artifact from both jobs (split the same
+  way `build-performance-*` is: `fast-checks` only has meaningful lint counts, `test` only has a
+  meaningful coverage number, since neither job alone runs everything).
+- **Distributed tracing**: `spring-boot-starter-opentelemetry` auto-instruments every incoming
+  HTTP request as a span with zero application code (`management.tracing.sampling.probability`,
+  default `1.0` - this app is small enough that sampling everything isn't a volume concern).
+  Spans export via OTLP to `management.opentelemetry.tracing.export.otlp.endpoint` (default
+  `http://localhost:4318/v1/traces` - Spring Boot's own default; no collector there is perfectly
+  fine, spans just don't go anywhere). `logging.pattern.level` also includes `traceId`/`spanId`
+  from the same MDC mechanism as the correlation ID, so a log line and the trace it happened
+  inside of cross-reference in either direction. To verify locally against a real trace backend:
+  ```
+  docker run -d --name jaeger -p 4318:4318 -p 16686:16686 jaegertracing/all-in-one:latest
+  ./gradlew bootRun    # default OTLP endpoint already points at the container above
+  # use the app, then:
+  curl http://localhost:16686/api/traces?service=mockingbird-bank
+  # or open http://localhost:16686 in a browser
+  ```
+  (The bundled OTLP *metrics* exporter that comes along with this starter is switched off via
+  `management.otlp.metrics.export.enabled: false` - only tracing is wanted here, and this app
+  already has its own metrics story; see `application.yml` for why.)
+- **Deployment observability**: `.github/workflows/publish-image.yml` records a real [GitHub
+  Deployment](https://docs.github.com/en/rest/deployments/deployments) for every image it
+  publishes, then actually boots that exact image against a throwaway Postgres and waits for
+  `/actuator/health` to report healthy before marking the deployment `success` - a bad image is
+  visible as a failed deployment even though the build/push step itself already succeeded. See
+  the repo's Deployments tab, or `gh api repos/<owner>/<repo>/deployments`.
+- **Alerting**: a real Slack incoming webhook (`SLACK_ALERTS_WEBHOOK_URL` repo secret, posting to
+  `#mbb-ops`) fires on two failure paths - `ci.yml`'s `notify-on-failure` job when either CI job
+  fails on a push to `master` (not on PRs - those failures are already visible directly in the
+  PR), and `publish-image.yml`'s smoke-test job when a just-published image fails its
+  post-deploy health check. Both degrade to a harmless no-op (logged, not failed) if the secret
+  isn't set, so a fork/local run of these workflows doesn't break on a missing secret.
+- **Runbooks** (`docs/runbooks/`): concrete, copy-pasteable steps for the failure modes above
+  actually surfacing in production - [app won't start](docs/runbooks/app-wont-start.md),
+  [database down](docs/runbooks/database-down.md),
+  [error spike](docs/runbooks/error-spike.md), and
+  [rolling back a bad deploy](docs/runbooks/rollback.md).
+
 ## Project structure
 
 ```
@@ -355,12 +423,15 @@ src/main/java/com/mockingbirdbank/
   service/                    Application services (AccountService, TransactionService)
   security/                   Spring Security + Vaadin security wiring
   analytics/                    Product-event/error tracking (AnalyticsEventService)
+  resilience/                    Circuit breakers around repository calls (ResilienceConfig)
+  observability/                 Profiling endpoint, correlation-ID filter
   ui/                          Vaadin views (layout/ and view/)
 src/main/resources/
   application.yml              Spring config
   db/migration/                 Flyway migrations (V1__init_schema.sql, ...)
 src/test/java/com/mockingbirdbank/  Mirrors the main package layout
 config/checkstyle/, config/pmd/     Static analysis rule configs
+docs/runbooks/                          Operational runbooks (see Observability & resilience)
 k8s/                                    Kubernetes manifests for deployment
 ```
 

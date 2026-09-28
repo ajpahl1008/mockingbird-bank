@@ -25,6 +25,10 @@ jobs:
   publish:
     name: Build and push image
     runs-on: ubuntu-latest
+    outputs:
+      # The one tag format the smoke-test job below can rely on regardless of what else
+      # docker/metadata-action's tags list contains - full-length so it's unambiguous.
+      sha_tag: sha-${{ github.sha }}
     steps:
       - uses: actions/checkout@v5
 
@@ -56,3 +60,128 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  # Records a real GitHub Deployment (visible under the repo's Environments/Deployments UI, and
+  # via the Deployments API) for every image this workflow publishes, then actually boots that
+  # exact image against a throwaway Postgres and waits for /actuator/health to report healthy -
+  # not just "the build succeeded", but "the artifact that got pushed actually starts and can
+  # reach its database". The deployment is marked success/failure accordingly, so a bad image
+  # is visible as a failed deployment even though publish itself already succeeded.
+  deployment-smoke-test:
+    name: Post-publish deployment smoke test
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+      packages: read
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: mydatabase
+          POSTGRES_USER: admin
+          POSTGRES_PASSWORD: secret
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Create GitHub deployment
+        id: create-deployment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          deployment_id=$(gh api "repos/${{ github.repository }}/deployments" \
+            -f ref="${{ github.sha }}" \
+            -f environment=production \
+            -F auto_merge=false \
+            -f description="Smoke test for ${{ env.IMAGE_NAME }}:${{ needs.publish.outputs.sha_tag }}" \
+            --jq .id)
+          echo "id=$deployment_id" >> "$GITHUB_OUTPUT"
+          gh api "repos/${{ github.repository }}/deployments/$deployment_id/statuses" \
+            -f state=in_progress \
+            -f description="Booting the published image and waiting on /actuator/health" \
+            >/dev/null
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull the image that was just published
+        run: docker pull "${{ env.IMAGE_NAME }}:${{ needs.publish.outputs.sha_tag }}"
+
+      # --network host: the Postgres service container above publishes to the runner's own
+      # localhost (GitHub Actions' standard pattern for job-level services on ubuntu-latest,
+      # which run directly on the VM rather than in a job container), so the app needs the same
+      # network namespace to reach it at localhost:5432 without extra Docker networking setup.
+      - name: Boot the image and wait for a healthy /actuator/health
+        id: smoke_test
+        run: |
+          set -euo pipefail
+          docker run -d --name smoke-test --network host \
+            -e SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/mydatabase \
+            -e SPRING_DATASOURCE_USERNAME=admin \
+            -e SPRING_DATASOURCE_PASSWORD=secret \
+            "${{ env.IMAGE_NAME }}:${{ needs.publish.outputs.sha_tag }}"
+
+          healthy=false
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:8080/actuator/health | grep -q '"status":"UP"'; then
+              healthy=true
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$healthy" != "true" ]; then
+            echo "Published image never reported a healthy /actuator/health:" >&2
+            docker logs smoke-test >&2
+            exit 1
+          fi
+          echo "Published image is healthy."
+
+      - name: Report deployment status
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.smoke_test.outcome }}" = "success" ]; then
+            state=success
+            description="Published image booted and /actuator/health reported UP"
+          else
+            state=failure
+            description="Published image failed to boot or become healthy - see job logs"
+          fi
+          gh api "repos/${{ github.repository }}/deployments/${{ steps.create-deployment.outputs.id }}/statuses" \
+            -f state="$state" \
+            -f description="$description" \
+            >/dev/null
+
+      - name: Clean up smoke test container
+        if: always()
+        run: docker rm -f smoke-test || true
+
+      - name: Notify Slack if the deployment smoke test failed
+        if: failure()
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_ALERTS_WEBHOOK_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${SLACK_WEBHOOK_URL:-}" ]; then
+            echo "SLACK_ALERTS_WEBHOOK_URL secret not set - skipping Slack notification." >&2
+            exit 0
+          fi
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          text=":red_circle: *Published image failed its post-deploy health check*
+          <$run_url|View run> - image \`${{ env.IMAGE_NAME }}:${{ needs.publish.outputs.sha_tag }}\` never reported healthy"
+          payload=$(jq -n --arg text "$text" '{text: $text}')
+          curl -sf -X POST -H 'Content-type: application/json' --data "$payload" "$SLACK_WEBHOOK_URL"
