@@ -1,0 +1,44 @@
+name: Backlog grooming
+
+# Keeps the issue/PR backlog from silently accumulating: with no maintainer
+# activity in 60 days it gets a warning comment and a "stale" label; 14 days
+# after that with still no activity, it's closed (not deleted - reopening is
+# one click). Runs daily so backlog health is a continuously-enforced
+# property, not a periodic manual cleanup someone has to remember to do.
+on:
+  schedule:
+    - cron: '0 6 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/stale@v9
+        with:
+          days-before-stale: 60
+          days-before-close: 14
+          stale-issue-label: 'stale'
+          stale-pr-label: 'stale'
+          exempt-issue-labels: 'priority: high,pinned,security'
+          exempt-pr-labels: 'priority: high,pinned,security'
+          # Draft PRs are usually parked on purpose (waiting on something
+          # else) - don't churn them the same way as an idle open PR.
+          exempt-draft-pr: true
+          stale-issue-message: >
+            This issue hasn't had activity in 60 days. It'll be closed in 14
+            days if nothing changes - comment (or add a `priority:` label) to
+            keep it open.
+          stale-pr-message: >
+            This PR hasn't had activity in 60 days. It'll be closed in 14
+            days if nothing changes - rebase or comment to keep it open.
+          close-issue-message: >
+            Closing due to inactivity. Reopen any time if this is still
+            relevant.
+          close-pr-message: >
+            Closing due to inactivity. Reopen (or open a fresh PR) any time
+            if this is still relevant.

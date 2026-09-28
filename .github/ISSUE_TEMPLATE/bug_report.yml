@@ -1,0 +1,67 @@
+name: Bug report
+description: Something in the app or its tooling isn't working as expected.
+labels: ["bug", "triage"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug. Screenshots help for UI issues.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: >
+        Include how you ran the app (`./gradlew bootRun`, `./scripts/dev-up.sh`,
+        the Docker image, dev container, ...) if that's relevant.
+      placeholder: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Commit / version
+      description: Output of `git rev-parse --short HEAD`, or the image tag if you're running the Docker image.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Where did this happen?
+      options:
+        - Local (./gradlew bootRun)
+        - Local (./scripts/dev-up.sh)
+        - Docker image
+        - Dev container
+        - CI
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or stack trace
+      description: >
+        Paste any relevant output from the console or
+        build/logs/analytics-events.log. No need to scrub secrets - logback
+        already redacts password/token/card-shaped values before they're
+        written - but please double-check before pasting anyway.
+      render: shell
+    validations:
+      required: false

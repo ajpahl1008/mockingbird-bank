@@ -62,6 +62,11 @@ dependencies {
     implementation 'org.springframework:spring-tx'
     implementation 'ch.qos.logback:logback-classic'
     implementation 'org.slf4j:slf4j-api'
+    // AnalyticsEventService compiles directly against Micrometer's Counter/
+    // MeterRegistry, not just whatever pulls it in transitively today
+    // (currently spring-boot-starter-actuator) - same rationale as the four
+    // dependencies just above.
+    implementation 'io.micrometer:micrometer-core'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -290,6 +295,7 @@ jacocoTestCoverageVerification {
                 'com.mockingbirdbank.service.*',
                 'com.mockingbirdbank.security.*',
                 'com.mockingbirdbank.config.*',
+                'com.mockingbirdbank.analytics.*',
             ]
             limit {
                 counter = 'LINE'

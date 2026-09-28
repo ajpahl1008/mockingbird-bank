@@ -1,0 +1,7 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/ajpahl1008/mockingbird-bank/security/advisories/new
+    about: >
+      Please don't open a public issue for a suspected security problem - use
+      a private security advisory instead so it isn't visible until fixed.

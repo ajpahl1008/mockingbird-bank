@@ -1,5 +1,6 @@
 package com.mockingbirdbank.ui.view;
 
+import com.mockingbirdbank.analytics.AnalyticsEventService;
 import com.mockingbirdbank.config.FeatureFlagService;
 import com.mockingbirdbank.model.Account;
 import com.mockingbirdbank.model.AccountHolder;
@@ -18,6 +19,7 @@ import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * The landing screen: total assets up top, then one card per account. Mirrors the "Dashboard"
@@ -32,11 +34,16 @@ public class DashboardView extends VerticalLayout {
 
     private final FeatureFlagService featureFlagService;
 
-    public DashboardView(AccountService accountService, FeatureFlagService featureFlagService) {
+    public DashboardView(
+            AccountService accountService,
+            FeatureFlagService featureFlagService,
+            AnalyticsEventService analytics) {
         this.featureFlagService = featureFlagService;
         AccountHolder holder = accountService.currentHolder();
         List<Account> accounts = accountService.accountsFor(holder);
         BigDecimal total = accountService.totalBalance(holder);
+        analytics.track(
+                "dashboard.viewed", Map.of("accountCount", String.valueOf(accounts.size())));
 
         setPadding(true);
         setSpacing(true);

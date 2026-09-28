@@ -1,5 +1,6 @@
 package com.mockingbirdbank.ui.view;
 
+import com.mockingbirdbank.analytics.AnalyticsEventService;
 import com.mockingbirdbank.model.Account;
 import com.mockingbirdbank.model.Transaction;
 import com.mockingbirdbank.service.AccountService;
@@ -20,6 +21,7 @@ import java.text.NumberFormat;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * The transaction history for one account, at /accounts/{id}. Mirrors the "Account Detail" artboard
@@ -34,10 +36,15 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
 
     private final AccountService accountService;
     private final TransactionService transactionService;
+    private final AnalyticsEventService analytics;
 
-    public AccountDetailView(AccountService accountService, TransactionService transactionService) {
+    public AccountDetailView(
+            AccountService accountService,
+            TransactionService transactionService,
+            AnalyticsEventService analytics) {
         this.accountService = accountService;
         this.transactionService = transactionService;
+        this.analytics = analytics;
         setPadding(true);
         setSpacing(true);
         getStyle().set("background", "var(--mb-ivory)").set("min-height", "100%");
@@ -49,8 +56,11 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
         try {
             account = accountService.requireAccount(accountId);
         } catch (IllegalArgumentException e) {
+            analytics.trackError(
+                    "account.viewed", "not_found", Map.of("accountId", String.valueOf(accountId)));
             throw new NotFoundException("No such account");
         }
+        analytics.track("account.viewed", Map.of("accountId", String.valueOf(accountId)));
 
         removeAll();
         add(backLink());

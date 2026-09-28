@@ -1,0 +1,51 @@
+# Config for actions/labeler (.github/workflows/labeler.yml). Applies "area:
+# *" labels to a PR automatically based on which paths it touches, mirroring
+# the layout documented under "Project structure" in AGENTS.md - so labels
+# stay accurate without a human remembering to set them by hand on every PR.
+'area: ui':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/main/java/com/mockingbirdbank/ui/**'
+          - 'src/main/resources/META-INF/resources/**'
+
+'area: security':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/main/java/com/mockingbirdbank/security/**'
+
+'area: database':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/main/resources/db/migration/**'
+          - 'src/main/java/com/mockingbirdbank/model/**'
+          - 'src/main/java/com/mockingbirdbank/repository/**'
+
+'area: ci':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '.github/**'
+          - '.githooks/**'
+
+'area: docs':
+  - changed-files:
+      - any-glob-to-any-file:
+          - '**/*.md'
+          - 'docs/**'
+
+'area: build':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'build.gradle'
+          - 'gradle.properties'
+          - 'gradle/**'
+          - 'Dockerfile'
+          - '*.zsh'
+          - 'scripts/**'
+          - '.devcontainer/**'
+          - 'docker-compose.yml'
+
+'area: tests':
+  - changed-files:
+      - any-glob-to-any-file:
+          - 'src/test/**'
+          - 'qa/**'

@@ -152,7 +152,8 @@ browser fixture - so coverage is tracked but not gated there. Instead
 
 - A 30% project-wide line-coverage floor, so overall coverage can't regress.
 - A 90% per-class line-coverage minimum on the business logic packages
-  (`model`, `service`, `security`, `config`), which sit at 94-100% today.
+  (`model`, `service`, `security`, `config`, `analytics`), which sit at
+  94-100% today.
 
 ### Interactive QA (browser-driven smoke test)
 
@@ -185,6 +186,32 @@ and `AccountCard` use it to gate two small, genuinely optional pieces of UI. Cur
 visible read-only at `/actuator/featureflags` (`FeatureFlagsEndpoint`) for ops visibility. Add a
 new flag by adding one field to `FeatureFlagsProperties` (with a default matching current
 behavior) and one accessor on `FeatureFlagService`.
+
+## Product analytics & error insight
+
+`AnalyticsEventService` (`src/main/java/com/mockingbirdbank/analytics/`) is the one call-site API
+for "what did a real user actually do or hit" - both are real, aggregable signals today, not
+something that only becomes visible by tailing logs after someone complains:
+
+- `track(event, attributes)` for a product event (`dashboard.viewed`, `account.viewed`).
+- `trackError(event, reason, attributes)` for a user-facing failure (a 404'd account, a failed
+  login), tagged with a short `reason` so it aggregates instead of one series per occurrence.
+
+Every call does two things: increments a Micrometer counter (`product.events`, tagged by
+`event`/`outcome`/`reason` - visible at `/actuator/metrics/product.events` once that endpoint is
+exposed, and exportable to Prometheus/Datadog/etc. later with zero call-site changes), and writes
+one structured line to the `com.mockingbirdbank.analytics.events` logger, which `logback-spring.xml`
+routes to its own rolling file (`build/logs/analytics-events.log`, independent of the regular
+application log) - something a log shipper could point at today without any code change.
+
+Two things feed it without any call-site code at all:
+
+- `AuthenticationEventListener` listens for the `AuthenticationSuccessEvent` /
+  `AbstractAuthenticationFailureEvent` Spring Security already publishes on every login attempt,
+  so successful and failed sign-ins are both tracked.
+- `GlobalErrorHandler` registers a session-wide Vaadin `ErrorHandler`, so an unhandled exception in
+  *any* view - not just ones with their own try/catch - is tracked (`ui.unhandled_exception`,
+  tagged by exception type) before falling through to Vaadin's normal error-page/logging behavior.
 
 ## Releases
 
@@ -292,6 +319,31 @@ step needed.
   longer logs the seeded demo password (see git history if curious what that
   looked like before).
 
+## Project management
+
+- **Issue templates** (`.github/ISSUE_TEMPLATE/`): structured forms for bug
+  reports and feature requests (both auto-labeled `triage`), plus a
+  `config.yml` that disables freeform blank issues and points a suspected
+  security problem at a private GitHub security advisory instead of a public
+  issue.
+- **PR template** (`.github/pull_request_template.md`): what changed and why,
+  how it was verified, and a checklist covering the checks in this file
+  (`./gradlew build`, `AGENTS.md` updates, feature-flagging UI-facing work, no
+  secrets/PII).
+- **Labels**: beyond GitHub's defaults, this repo uses `feature`/`fix`/
+  `security`/`chore` (release-drafter categorization), `major`/`minor`/`patch`/
+  `skip-changelog` (release-drafter's version resolver), `priority: high`/
+  `medium`/`low`, and `area: ui`/`security`/`database`/`ci`/`docs`/`build`/
+  `tests` (matching the packages under [Project structure](#project-structure)
+  below). The `area: *` ones are applied automatically by
+  `.github/workflows/labeler.yml` (config: `.github/labeler.yml`) based on
+  which paths a PR touches - not something a human has to remember to set.
+- **Backlog health** (`.github/workflows/stale.yml`): a daily job flags any
+  issue/PR with no activity in 60 days, then closes it 14 days later if
+  nothing changed - `priority: high`, `pinned`, and `security` labelled items
+  are exempt, and closing is one click to undo. Keeps an abandoned backlog
+  from just accumulating silently.
+
 ## Project structure
 
 ```
@@ -302,6 +354,7 @@ src/main/java/com/mockingbirdbank/
   repository/                Spring Data JPA repositories
   service/                    Application services (AccountService, TransactionService)
   security/                   Spring Security + Vaadin security wiring
+  analytics/                    Product-event/error tracking (AnalyticsEventService)
   ui/                          Vaadin views (layout/ and view/)
 src/main/resources/
   application.yml              Spring config

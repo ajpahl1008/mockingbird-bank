@@ -1,0 +1,37 @@
+name: Feature request
+description: Propose a new feature or an improvement to an existing one.
+labels: ["feature", "triage"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Who hits this, and what do they have to do today instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: >
+        What should change? If this is UI-facing, note whether it should ship
+        behind a feature flag (see the "Feature flags" section of AGENTS.md) -
+        most new dashboard-facing behavior should.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This is read-only account/dashboard functionality, consistent with the app's current scope (no money movement, no public registration).
+          required: false
