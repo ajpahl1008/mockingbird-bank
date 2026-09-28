@@ -5,12 +5,11 @@ import com.mockingbirdbank.model.AccountHolder;
 import com.mockingbirdbank.model.AppUser;
 import com.mockingbirdbank.repository.AccountRepository;
 import com.mockingbirdbank.repository.AppUserRepository;
+import java.math.BigDecimal;
+import java.util.List;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.math.BigDecimal;
-import java.util.List;
 
 @Service
 @Transactional(readOnly = true)
@@ -19,7 +18,8 @@ public class AccountService {
     private final AppUserRepository appUserRepository;
     private final AccountRepository accountRepository;
 
-    public AccountService(AppUserRepository appUserRepository, AccountRepository accountRepository) {
+    public AccountService(
+            AppUserRepository appUserRepository, AccountRepository accountRepository) {
         this.appUserRepository = appUserRepository;
         this.accountRepository = accountRepository;
     }
@@ -27,9 +27,13 @@ public class AccountService {
     /** Resolves the holder linked to whoever Spring Security says is signed in. */
     public AccountHolder currentHolder() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        return appUserRepository.findByUsername(username)
+        return appUserRepository
+                .findByUsername(username)
                 .map(AppUser::getHolder)
-                .orElseThrow(() -> new IllegalStateException("No account holder linked to user: " + username));
+                .orElseThrow(
+                        () ->
+                                new IllegalStateException(
+                                        "No account holder linked to user: " + username));
     }
 
     public List<Account> accountsFor(AccountHolder holder) {
@@ -37,7 +41,8 @@ public class AccountService {
     }
 
     public Account requireAccount(Long accountId) {
-        return accountRepository.findById(accountId)
+        return accountRepository
+                .findById(accountId)
                 .orElseThrow(() -> new IllegalArgumentException("No such account: " + accountId));
     }
 

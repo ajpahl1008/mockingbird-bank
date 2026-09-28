@@ -1,26 +1,27 @@
 package com.mockingbirdbank.model;
 
-import org.junit.jupiter.api.Test;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 class TransactionTest {
 
     @Test
     void positiveAmountIsCredit() {
-        Transaction credit = new Transaction(null, OffsetDateTime.now(), "Deposit",
-                "Income", new BigDecimal("100.00"));
+        Transaction credit =
+                new Transaction(
+                        null, OffsetDateTime.now(), "Deposit", "Income", new BigDecimal("100.00"));
 
         assertThat(credit.isCredit()).isTrue();
     }
 
     @Test
     void negativeAmountIsNotCredit() {
-        Transaction debit = new Transaction(null, OffsetDateTime.now(), "Coffee",
-                "Dining", new BigDecimal("-4.50"));
+        Transaction debit =
+                new Transaction(
+                        null, OffsetDateTime.now(), "Coffee", "Dining", new BigDecimal("-4.50"));
 
         assertThat(debit.isCredit()).isFalse();
     }

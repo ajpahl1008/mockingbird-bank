@@ -13,15 +13,13 @@ import com.vaadin.flow.theme.lumo.LumoUtility;
 import jakarta.annotation.security.PermitAll;
 
 /**
- * The dark top bar shared by every view: the bird wordmark on the left,
- * the signed-in holder's name and a sign-out button (wired to Spring
- * Security's logout via Vaadin's {@link AuthenticationContext}) on the
- * right. Individual views render everything below it.
+ * The dark top bar shared by every view: the bird wordmark on the left, the signed-in holder's name
+ * and a sign-out button (wired to Spring Security's logout via Vaadin's {@link
+ * AuthenticationContext}) on the right. Individual views render everything below it.
  *
- * <p>Vaadin's navigation access control requires a parent layout to grant
- * access independently of its views - without {@code @PermitAll} here,
- * every view routed through this layout would 403 even if the view itself
- * is {@code @PermitAll}, because an unannotated layout defaults to
+ * <p>Vaadin's navigation access control requires a parent layout to grant access independently of
+ * its views - without {@code @PermitAll} here, every view routed through this layout would 403 even
+ * if the view itself is {@code @PermitAll}, because an unannotated layout defaults to
  * {@code @DenyAll}.
  */
 @PermitAll
@@ -61,7 +59,8 @@ public class MainLayout extends AppLayout {
         bar.setWidthFull();
         bar.setAlignItems(FlexLayout.Alignment.CENTER);
         bar.setJustifyContentMode(FlexLayout.JustifyContentMode.BETWEEN);
-        bar.addClassNames(LumoUtility.Padding.Horizontal.LARGE, LumoUtility.Padding.Vertical.MEDIUM);
+        bar.addClassNames(
+                LumoUtility.Padding.Horizontal.LARGE, LumoUtility.Padding.Vertical.MEDIUM);
         bar.getStyle().set("background", "var(--mb-navy)");
 
         addToNavbar(bar);

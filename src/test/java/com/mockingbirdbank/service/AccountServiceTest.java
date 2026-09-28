@@ -1,11 +1,19 @@
 package com.mockingbirdbank.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
+
 import com.mockingbirdbank.model.Account;
 import com.mockingbirdbank.model.AccountHolder;
 import com.mockingbirdbank.model.AccountType;
 import com.mockingbirdbank.model.AppUser;
 import com.mockingbirdbank.repository.AccountRepository;
 import com.mockingbirdbank.repository.AppUserRepository;
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -15,22 +23,11 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.math.BigDecimal;
-import java.time.LocalDate;
-import java.util.List;
-import java.util.Optional;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
-
 @ExtendWith(MockitoExtension.class)
 class AccountServiceTest {
 
-    @Mock
-    private AppUserRepository appUserRepository;
-    @Mock
-    private AccountRepository accountRepository;
+    @Mock private AppUserRepository appUserRepository;
+    @Mock private AccountRepository accountRepository;
 
     private AccountService accountService;
 
@@ -45,8 +42,9 @@ class AccountServiceTest {
     }
 
     private void authenticateAs(String username) {
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(username, "n/a", List.of()));
+        SecurityContextHolder.getContext()
+                .setAuthentication(
+                        new UsernamePasswordAuthenticationToken(username, "n/a", List.of()));
     }
 
     @Test
@@ -64,18 +62,29 @@ class AccountServiceTest {
         authenticateAs("ghost");
         when(appUserRepository.findByUsername("ghost")).thenReturn(Optional.empty());
 
-        assertThatThrownBy(accountService::currentHolder)
-                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(accountService::currentHolder).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
     void totalBalanceSumsAllAccountsForHolder() {
         AccountHolder holder = new AccountHolder("Jordan Ellis", "jordan.ellis@example.com");
         holder.setId(1L);
-        Account checking = new Account(holder, "1", AccountType.CHECKING, "Checking",
-                new BigDecimal("100.00"), LocalDate.now());
-        Account savings = new Account(holder, "2", AccountType.SAVINGS, "Savings",
-                new BigDecimal("250.50"), LocalDate.now());
+        Account checking =
+                new Account(
+                        holder,
+                        "1",
+                        AccountType.CHECKING,
+                        "Checking",
+                        new BigDecimal("100.00"),
+                        LocalDate.now());
+        Account savings =
+                new Account(
+                        holder,
+                        "2",
+                        AccountType.SAVINGS,
+                        "Savings",
+                        new BigDecimal("250.50"),
+                        LocalDate.now());
         when(accountRepository.findByHolderIdOrderByAccountTypeAscIdAsc(1L))
                 .thenReturn(List.of(checking, savings));
 
@@ -92,8 +101,14 @@ class AccountServiceTest {
 
     @Test
     void requireAccountReturnsMatchFromRepository() {
-        Account account = new Account(new AccountHolder("Jordan Ellis", "jordan.ellis@example.com"),
-                "1", AccountType.CHECKING, "Checking", BigDecimal.ZERO, LocalDate.now());
+        Account account =
+                new Account(
+                        new AccountHolder("Jordan Ellis", "jordan.ellis@example.com"),
+                        "1",
+                        AccountType.CHECKING,
+                        "Checking",
+                        BigDecimal.ZERO,
+                        LocalDate.now());
         when(accountRepository.findById(7L)).thenReturn(Optional.of(account));
 
         assertThat(accountService.requireAccount(7L)).isSameAs(account);

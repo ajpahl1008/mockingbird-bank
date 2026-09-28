@@ -1,0 +1,81 @@
+---
+name: run-mockingbird-bank-locally
+description: Use when you need to build, run, or interactively exercise the Mockingbird Bank Spring Boot + Vaadin app on a local machine, including standing up a local PostgreSQL instance, running the code-quality suite, and logging in with the seeded demo account.
+---
+
+# Run Mockingbird Bank locally
+
+Mockingbird Bank is a single Spring Boot process (Vaadin UI + JPA/PostgreSQL persistence).
+This skill covers getting it running end-to-end from a fresh clone, including a database when
+you don't already have one reachable.
+
+## 1. Prerequisites
+
+- JDK 21 (Gradle's toolchain support auto-detects a local install)
+- Docker, for either a throwaway local Postgres (below) or for running the test suite's
+  Testcontainers-backed integration tests
+
+## 2. Stand up PostgreSQL
+
+If you already have a Postgres reachable at `localhost:5432` with a database named
+`mydatabase` (user `admin` / password `secret`), skip this step - those are the defaults in
+`src/main/resources/application.yml`.
+
+Otherwise, start a disposable one:
+
+```bash
+docker run --rm -d --name mockingbird-postgres \
+  -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=mydatabase \
+  -p 5432:5432 postgres:16-alpine
+```
+
+Flyway creates the schema automatically the first time the app starts against it - no manual
+migration step needed.
+
+## 3. Build and run
+
+```bash
+./gradlew build     # compiles, runs tests, runs all code-quality checks (see step 5)
+./gradlew bootRun    # starts the app on :8080 (override with SERVER_PORT)
+```
+
+If your Postgres isn't at the defaults above, pass the datasource as env vars instead:
+
+```bash
+SPRING_DATASOURCE_URL=jdbc:postgresql://<host>:5432/<db> \
+SPRING_DATASOURCE_USERNAME=<user> \
+SPRING_DATASOURCE_PASSWORD=<password> \
+./gradlew bootRun
+```
+
+## 4. Log in and drive the UI
+
+On an empty database, `DataInitializer` seeds one account holder with three accounts and
+sample transactions so there's real data to look at.
+
+1. Open `http://localhost:8080` - you land on `LoginView`.
+2. Sign in with username `jordan.ellis`, password `mockingbird` (override the seeded password
+   via the `MOCKINGBIRD_DEV_PASSWORD` env var before first startup if you need a different one).
+3. You're redirected to the dashboard (`DashboardView`, routes `/` and `/accounts`): total
+   balance banner plus one card per account.
+4. Click any account card to open `AccountDetailView` (`/accounts/{id}`) and see that
+   account's transaction history in a grid.
+5. Use the "Back to accounts" link to return to the dashboard, or sign out via the main layout.
+
+A 3xx redirect to `/login` for any authenticated route, or a `200` with `"status":"UP"` from
+`GET /actuator/health`, both confirm the app is wired up correctly even without a browser.
+
+## 5. Run the code-quality suite
+
+All of these run automatically as part of `./gradlew build`/`check`; run them individually
+while iterating:
+
+```bash
+./gradlew spotlessCheck                    # formatting (fix with spotlessApply)
+./gradlew checkstyleMain checkstyleTest    # naming/imports/complexity/file-size/TODOs
+./gradlew pmdMain pmdTest                  # dead/unused code
+./gradlew cpdCheck                         # copy-paste duplicate detection
+```
+
+See [AGENTS.md](../../../AGENTS.md) for the full command reference, project layout, and
+conventions.

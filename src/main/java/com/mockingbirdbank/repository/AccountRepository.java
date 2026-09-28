@@ -1,9 +1,8 @@
 package com.mockingbirdbank.repository;
 
 import com.mockingbirdbank.model.Account;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface AccountRepository extends JpaRepository<Account, Long> {
 

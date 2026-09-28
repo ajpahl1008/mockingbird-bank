@@ -3,5 +3,4 @@ package com.mockingbirdbank.repository;
 import com.mockingbirdbank.model.AccountHolder;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface AccountHolderRepository extends JpaRepository<AccountHolder, Long> {
-}
+public interface AccountHolderRepository extends JpaRepository<AccountHolder, Long> {}

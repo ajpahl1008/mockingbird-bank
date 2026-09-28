@@ -16,15 +16,14 @@ import com.vaadin.flow.router.HasUrlParameter;
 import com.vaadin.flow.router.NotFoundException;
 import com.vaadin.flow.router.Route;
 import jakarta.annotation.security.PermitAll;
-
-import java.time.format.DateTimeFormatter;
 import java.text.NumberFormat;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * The transaction history for one account, at /accounts/{id}. Mirrors the
- * "Account Detail" artboard in the design mockup.
+ * The transaction history for one account, at /accounts/{id}. Mirrors the "Account Detail" artboard
+ * in the design mockup.
  */
 @Route(value = "accounts", layout = MainLayout.class)
 @PermitAll
@@ -61,17 +60,27 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
 
     private Anchor backLink() {
         Anchor back = new Anchor("accounts", "← Back to accounts");
-        back.getStyle().set("color", "#1F6F63").set("font-weight", "600")
-                .set("font-size", "0.85rem").set("text-decoration", "none");
+        back.getStyle()
+                .set("color", "#1F6F63")
+                .set("font-weight", "600")
+                .set("font-size", "0.85rem")
+                .set("text-decoration", "none");
         return back;
     }
 
     private HorizontalLayout accountHeader(Account account) {
         Span name = new Span(account.getDisplayName());
-        name.getStyle().set("font-family", "Georgia, serif").set("font-size", "1.4rem")
-                .set("font-weight", "600").set("color", "var(--mb-navy)");
-        Span meta = new Span("Account " + account.getMaskedNumber() + " · Opened "
-                + account.getOpenedAt());
+        name.getStyle()
+                .set("font-family", "Georgia, serif")
+                .set("font-size", "1.4rem")
+                .set("font-weight", "600")
+                .set("color", "var(--mb-navy)");
+        Span meta =
+                new Span(
+                        "Account "
+                                + account.getMaskedNumber()
+                                + " · Opened "
+                                + account.getOpenedAt());
         meta.getStyle().set("color", "var(--mb-text-muted)").set("font-size", "0.85rem");
 
         VerticalLayout left = new VerticalLayout(name, meta);
@@ -79,11 +88,18 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
         left.setSpacing(false);
 
         Span label = new Span("Current balance");
-        label.getStyle().set("font-size", "0.7rem").set("text-transform", "uppercase")
-                .set("letter-spacing", "0.06em").set("color", "var(--mb-text-muted)").set("font-weight", "600");
+        label.getStyle()
+                .set("font-size", "0.7rem")
+                .set("text-transform", "uppercase")
+                .set("letter-spacing", "0.06em")
+                .set("color", "var(--mb-text-muted)")
+                .set("font-weight", "600");
         Span balance = new Span(USD.format(account.getBalance()));
-        balance.getStyle().set("font-family", "Georgia, serif").set("font-size", "2rem")
-                .set("font-weight", "600").set("color", "var(--mb-navy)");
+        balance.getStyle()
+                .set("font-family", "Georgia, serif")
+                .set("font-size", "2rem")
+                .set("font-weight", "600")
+                .set("color", "var(--mb-navy)");
 
         VerticalLayout right = new VerticalLayout(label, balance);
         right.setPadding(false);
@@ -94,8 +110,11 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
         header.setWidthFull();
         header.setJustifyContentMode(FlexLayout.JustifyContentMode.BETWEEN);
         header.setAlignItems(FlexLayout.Alignment.CENTER);
-        header.getStyle().set("background", "white").set("border", "1px solid var(--mb-hairline)")
-                .set("border-radius", "16px").set("padding", "1.5rem 2rem");
+        header.getStyle()
+                .set("background", "white")
+                .set("border", "1px solid var(--mb-hairline)")
+                .set("border-radius", "16px")
+                .set("padding", "1.5rem 2rem");
         return header;
     }
 
@@ -103,15 +122,21 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
         Grid<Transaction> grid = new Grid<>();
         grid.setItems(transactions);
         grid.setAllRowsVisible(true);
-        grid.addColumn(tx -> tx.getPostedAt().format(DATE_FMT)).setHeader("Date").setAutoWidth(true);
+        grid.addColumn(tx -> tx.getPostedAt().format(DATE_FMT))
+                .setHeader("Date")
+                .setAutoWidth(true);
         grid.addColumn(Transaction::getDescription).setHeader("Description").setFlexGrow(1);
         grid.addColumn(Transaction::getCategory).setHeader("Category").setAutoWidth(true);
-        grid.addComponentColumn(tx -> {
-            Span amount = new Span(USD.format(tx.getAmount()));
-            amount.getStyle().set("font-weight", "600")
-                    .set("color", tx.isCredit() ? "#1F6F63" : "var(--mb-navy)");
-            return amount;
-        }).setHeader("Amount").setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END);
+        grid.addComponentColumn(
+                        tx -> {
+                            Span amount = new Span(USD.format(tx.getAmount()));
+                            amount.getStyle()
+                                    .set("font-weight", "600")
+                                    .set("color", tx.isCredit() ? "#1F6F63" : "var(--mb-navy)");
+                            return amount;
+                        })
+                .setHeader("Amount")
+                .setTextAlign(com.vaadin.flow.component.grid.ColumnTextAlign.END);
         grid.getStyle().set("border", "1px solid var(--mb-hairline)").set("border-radius", "16px");
         grid.setWidthFull();
         return grid;

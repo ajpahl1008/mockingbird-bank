@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Blocks a commit unless the Java code is correctly formatted and passes
+# Checkstyle. Installed automatically by the `installGitHooks` Gradle task
+# (see build.gradle), which points core.hooksPath at this directory.
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+echo "pre-commit: running Spotless + Checkstyle..."
+if ! ./gradlew spotlessCheck checkstyleMain checkstyleTest -q; then
+    echo
+    echo "pre-commit: formatting/lint check failed."
+    echo "  - Run './gradlew spotlessApply' to auto-fix formatting."
+    echo "  - Run './gradlew checkstyleMain checkstyleTest' to see lint violations."
+    exit 1
+fi
+
+echo "pre-commit: validating AGENTS.md against the current codebase..."
+if ! ./scripts/validate-agents-md.sh; then
+    echo
+    echo "pre-commit: AGENTS.md references a Gradle task or file path that no"
+    echo "longer exists - update the doc (or the code) before committing."
+    exit 1
+fi
+
+echo "pre-commit: checks passed."

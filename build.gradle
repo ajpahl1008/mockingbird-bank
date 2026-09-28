@@ -1,5 +1,9 @@
 plugins {
     id 'java'
+    id 'checkstyle'
+    id 'pmd'
+    id 'com.diffplug.spotless' version '7.0.2'
+    id 'de.aaschmid.cpd' version '3.5'
     id 'org.springframework.boot' version '4.1.1'
     id 'io.spring.dependency-management' version '1.1.6'
     id 'com.vaadin' version '25.3.0'
@@ -62,6 +66,138 @@ dependencies {
 vaadin {
     // Flip to true (or set via -Pvaadin.productionMode) when building a deployable jar.
     productionMode = false
+}
+
+checkstyle {
+    toolVersion = '10.20.2'
+    configFile = file("${rootDir}/config/checkstyle/checkstyle.xml")
+    // Errors (naming, imports, complexity, file size, etc.) still fail the build;
+    // TODO/FIXME markers are reported as warnings so debt is visible without blocking work.
+    maxWarnings = Integer.MAX_VALUE
+    ignoreFailures = false
+}
+
+// Checkstyle only targets first-party Java sources; generated Vaadin frontend
+// assets aren't Java and Lombok-generated accessors are handled at compile time.
+tasks.named('checkstyleMain') {
+    source = fileTree('src/main/java')
+}
+tasks.named('checkstyleTest') {
+    source = fileTree('src/test/java')
+}
+
+// Keep the linter in the normal build/verification flow so agents see
+// violations as part of `./gradlew check`/`./gradlew build`.
+tasks.named('check') {
+    dependsOn tasks.named('checkstyleMain'), tasks.named('checkstyleTest')
+}
+
+pmd {
+    toolVersion = '7.7.0'
+    ruleSetFiles = files("${rootDir}/config/pmd/dead-code.xml")
+    ruleSets = []
+    consoleOutput = true
+    ignoreFailures = false
+}
+
+// PMD only targets first-party Java; Vaadin's generated frontend isn't Java.
+tasks.named('pmdMain') {
+    source = fileTree('src/main/java')
+}
+tasks.named('pmdTest') {
+    source = fileTree('src/test/java')
+}
+tasks.named('check') {
+    dependsOn tasks.named('pmdMain'), tasks.named('pmdTest')
+}
+
+cpd {
+    toolVersion = '7.7.0'
+    language = 'java'
+}
+cpdCheck {
+    source = fileTree('src/main/java') + fileTree('src/test/java')
+    // Below this, short getter/setter/builder boilerplate reads as a "duplicate"
+    // even though it isn't meaningful repetition worth extracting.
+    minimumTokenCount = 75
+    ignoreFailures = false
+}
+tasks.named('check') {
+    dependsOn tasks.named('cpdCheck')
+}
+
+spotless {
+    java {
+        target 'src/main/java/**/*.java', 'src/test/java/**/*.java'
+        googleJavaFormat('1.25.2').aosp()
+        removeUnusedImports()
+        trimTrailingWhitespace()
+        endWithNewline()
+    }
+}
+
+// Fail the build on unformatted code, same as any other verification check.
+tasks.named('check') {
+    dependsOn tasks.named('spotlessCheck')
+}
+
+// Generates the Javadoc site into build/docs/javadoc on every build and fails
+// it if any @link/@see/HTML reference is actually broken (missing-tag warnings
+// are allowed - not every method needs prose - but a dangling reference means
+// the docs have drifted from the code and should be caught here, not shipped).
+javadoc {
+    title = "Mockingbird Bank ${version} API"
+    source = fileTree('src/main/java')
+    options {
+        encoding = 'UTF-8'
+        addStringOption('Xdoclint:all,-missing', '-quiet')
+        links('https://docs.oracle.com/en/java/javase/21/docs/api/')
+    }
+    failOnError = true
+}
+tasks.named('check') {
+    dependsOn tasks.named('javadoc')
+}
+
+// Points Git at the checked-in .githooks/pre-commit script so Spotless and
+// Checkstyle run locally before a commit is even created, not just in CI.
+// Runs as part of every build so a fresh clone is wired up with no manual
+// `git config` step required.
+tasks.register('installGitHooks') {
+    group = 'verification'
+    description = 'Configures Git to use the checked-in hooks in .githooks/'
+    onlyIf { file('.githooks').isDirectory() && file('.git').isDirectory() }
+    doLast {
+        def process = ['git', 'config', 'core.hooksPath', '.githooks'].execute(null, projectDir)
+        process.waitFor()
+        if (process.exitValue() != 0) {
+            throw new GradleException("Failed to set core.hooksPath: ${process.err.text}")
+        }
+    }
+}
+tasks.named('build') {
+    dependsOn tasks.named('installGitHooks')
+}
+
+// Fails the build if AGENTS.md references a Gradle task or file/directory
+// path that no longer exists, so the doc can't silently rot as the project
+// evolves. See scripts/validate-agents-md.sh.
+tasks.register('validateAgentsMd') {
+    group = 'verification'
+    description = "Checks that Gradle tasks and paths referenced in AGENTS.md still exist."
+    doLast {
+        def process =
+                ['bash', "${rootDir}/scripts/validate-agents-md.sh"].execute(null, rootDir)
+        process.consumeProcessOutput(System.out, System.err)
+        process.waitFor()
+        if (process.exitValue() != 0) {
+            throw new GradleException(
+                    'AGENTS.md references a missing Gradle task or file path - see output above.')
+        }
+    }
+}
+tasks.named('check') {
+    dependsOn tasks.named('validateAgentsMd')
 }
 
 test {

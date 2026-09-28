@@ -1,0 +1,108 @@
+<?xml version="1.0"?>
+<!DOCTYPE module PUBLIC
+        "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
+        "https://checkstyle.org/dtds/configuration_1_3.dtd">
+
+<!--
+    Checkstyle ruleset for MockingBirdBank.
+
+    Scoped to the project's actual Java sources (src/main/java, src/test/java) via
+    the checkstyleMain/checkstyleTest source overrides in build.gradle, so Vaadin's
+    generated frontend TypeScript and Lombok-generated accessors are never linted.
+
+    Run with: ./gradlew checkstyleMain checkstyleTest
+-->
+<module name="Checker">
+    <property name="charset" value="UTF-8"/>
+    <property name="severity" value="error"/>
+    <property name="fileExtensions" value="java"/>
+
+    <!-- Fail on any tab character to keep indentation consistent across the codebase. -->
+    <module name="FileTabCharacter"/>
+
+    <!-- Every file must end with a newline. -->
+    <module name="NewlineAtEndOfFile"/>
+
+    <module name="LineLength">
+        <property name="max" value="160"/>
+        <property name="ignorePattern" value="^import|^package"/>
+    </module>
+
+    <!-- Flags files that have grown too large to review/maintain easily,
+         prompting a split before they become unmanageable. -->
+    <module name="FileLength">
+        <property name="max" value="400"/>
+    </module>
+
+    <module name="TreeWalker">
+
+        <!-- ==================== Naming conventions ==================== -->
+        <module name="TypeName"/>
+        <module name="MethodName"/>
+        <module name="MemberName"/>
+        <module name="ParameterName"/>
+        <module name="LocalVariableName"/>
+        <module name="LocalFinalVariableName"/>
+        <module name="StaticVariableName"/>
+        <module name="ConstantName">
+            <!-- Allow the conventional lowercase 'log'/'logger' SLF4J field name
+                 alongside standard SCREAMING_SNAKE_CASE constants. -->
+            <property name="format" value="^log(ger)?$|^[A-Z][A-Z0-9]*(_[A-Z0-9]+)*$"/>
+        </module>
+        <module name="ClassTypeParameterName"/>
+        <module name="MethodTypeParameterName"/>
+        <module name="PackageName">
+            <property name="format" value="^[a-z]+(\.[a-z][a-z0-9]*)*$"/>
+        </module>
+
+        <!-- ==================== Imports ==================== -->
+        <module name="RedundantImport"/>
+        <module name="UnusedImports"/>
+        <module name="AvoidStarImport"/>
+
+        <!-- ==================== Size / complexity ==================== -->
+        <module name="MethodLength">
+            <property name="max" value="150"/>
+        </module>
+        <module name="ParameterNumber">
+            <property name="max" value="8"/>
+        </module>
+        <module name="CyclomaticComplexity">
+            <property name="max" value="15"/>
+        </module>
+        <module name="NPathComplexity">
+            <property name="max" value="200"/>
+        </module>
+
+        <!-- ==================== Whitespace / formatting ==================== -->
+        <module name="WhitespaceAfter">
+            <property name="tokens" value="COMMA, SEMI"/>
+        </module>
+        <module name="EmptyBlock">
+            <property name="option" value="TEXT"/>
+            <property name="tokens" value="LITERAL_CATCH"/>
+        </module>
+
+        <!-- ==================== Coding ==================== -->
+        <module name="EqualsHashCode"/>
+        <module name="SimplifyBooleanExpression"/>
+        <module name="SimplifyBooleanReturn"/>
+        <module name="StringLiteralEquality"/>
+        <module name="OneStatementPerLine"/>
+
+        <!-- ==================== Blocks ==================== -->
+        <module name="NeedBraces"/>
+
+        <!-- ==================== Miscellaneous ==================== -->
+        <module name="UpperEll"/>
+        <module name="ArrayTypeStyle"/>
+
+        <!-- ==================== Technical debt tracking ==================== -->
+        <!-- Surfaces every TODO/FIXME as a build warning so debt markers show up
+             in `./gradlew checkstyleMain` output instead of getting lost silently. -->
+        <module name="TodoComment">
+            <property name="severity" value="warning"/>
+            <property name="format" value="(TODO|FIXME|XXX)"/>
+        </module>
+    </module>
+</module>

@@ -1,9 +1,8 @@
 package com.mockingbirdbank.repository;
 
 import com.mockingbirdbank.model.Transaction;
-import org.springframework.data.jpa.repository.JpaRepository;
-
 import java.util.List;
+import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface TransactionRepository extends JpaRepository<Transaction, Long> {
 

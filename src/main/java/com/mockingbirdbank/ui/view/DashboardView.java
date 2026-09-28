@@ -13,15 +13,14 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouteAlias;
 import jakarta.annotation.security.PermitAll;
-
 import java.math.BigDecimal;
 import java.text.NumberFormat;
 import java.util.List;
 import java.util.Locale;
 
 /**
- * The landing screen: total assets up top, then one card per account.
- * Mirrors the "Dashboard" artboard in the Mockingbird Bank design mockup.
+ * The landing screen: total assets up top, then one card per account. Mirrors the "Dashboard"
+ * artboard in the Mockingbird Bank design mockup.
  */
 @Route(value = "accounts", layout = MainLayout.class)
 @RouteAlias(value = "", layout = MainLayout.class)
@@ -83,10 +82,7 @@ public class DashboardView extends VerticalLayout {
     }
 
     private Span holderPrimaryAccountLine(List<Account> accounts) {
-        String masked = accounts.stream()
-                .findFirst()
-                .map(Account::getMaskedNumber)
-                .orElse("");
+        String masked = accounts.stream().findFirst().map(Account::getMaskedNumber).orElse("");
         Span line = new Span("Primary account " + masked);
         line.getStyle().set("color", "var(--mb-text-muted)").set("font-size", "0.85rem");
         return line;

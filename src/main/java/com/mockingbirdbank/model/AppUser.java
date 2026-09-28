@@ -13,10 +13,9 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * Login credentials, kept in their own table and deliberately separate from
- * {@link AccountHolder} (banking/PII data) so the two concerns don't mix.
- * One row per holder - this app has exactly one user today, not a
- * registration system.
+ * Login credentials, kept in their own table and deliberately separate from {@link AccountHolder}
+ * (banking/PII data) so the two concerns don't mix. One row per holder - this app has exactly one
+ * user today, not a registration system.
  */
 @Entity
 @Table(name = "app_user")

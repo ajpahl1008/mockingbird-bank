@@ -1,14 +1,23 @@
 package com.mockingbirdbank;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import com.mockingbirdbank.config.DataInitializer;
 import com.mockingbirdbank.model.AccountHolder;
 import com.mockingbirdbank.repository.AccountHolderRepository;
 import com.mockingbirdbank.repository.AccountRepository;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
@@ -18,38 +27,24 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.util.List;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.containsString;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestBuilders.formLogin;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
 /**
- * Full-context boot test against a real, throwaway Postgres - catches
- * wiring/config regressions (e.g. the env-var datasource placeholders) on
- * every run without depending on any developer's pre-existing local database.
+ * Full-context boot test against a real, throwaway Postgres - catches wiring/config regressions
+ * (e.g. the env-var datasource placeholders) on every run without depending on any developer's
+ * pre-existing local database.
  */
 @Testcontainers
 @SpringBootTest
 @AutoConfigureMockMvc
 class ApplicationSmokeTest {
 
-    @Container
-    @ServiceConnection
+    @Container @ServiceConnection
     static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine");
 
-    @Autowired
-    private MockMvc mockMvc;
+    @Autowired private MockMvc mockMvc;
 
-    @Autowired
-    private AccountHolderRepository holderRepository;
+    @Autowired private AccountHolderRepository holderRepository;
 
-    @Autowired
-    private AccountRepository accountRepository;
+    @Autowired private AccountRepository accountRepository;
 
     @Test
     void healthEndpointReportsUp() throws Exception {
@@ -63,7 +58,9 @@ class ApplicationSmokeTest {
         List<AccountHolder> holders = holderRepository.findAll();
 
         assertThat(holders).hasSize(1);
-        assertThat(accountRepository.findByHolderIdOrderByAccountTypeAscIdAsc(holders.get(0).getId()))
+        assertThat(
+                        accountRepository.findByHolderIdOrderByAccountTypeAscIdAsc(
+                                holders.get(0).getId()))
                 .hasSize(3);
     }
 
@@ -91,17 +88,23 @@ class ApplicationSmokeTest {
         // real bug - the full login -> dashboard -> logout flow was verified
         // by hand against a live `bootRun` instance. See RequestUtil source
         // (isFlowRouteInternal) for the documented lazy-init behavior.
-        MvcResult loginResult = mockMvc.perform(
-                        formLogin().user(DataInitializer.DEV_USERNAME).password(DataInitializer.DEV_PASSWORD_DEFAULT))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(redirectedUrl("/"))
-                .andReturn();
+        MvcResult loginResult =
+                mockMvc.perform(
+                                formLogin()
+                                        .user(DataInitializer.DEV_USERNAME)
+                                        .password(DataInitializer.DEV_PASSWORD_DEFAULT))
+                        .andExpect(status().is3xxRedirection())
+                        .andExpect(redirectedUrl("/"))
+                        .andReturn();
 
         MockHttpSession session = (MockHttpSession) loginResult.getRequest().getSession(false);
         assertThat(session).isNotNull();
-        SecurityContext securityContext = (SecurityContext) session
-                .getAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
-        assertThat(securityContext.getAuthentication().getName()).isEqualTo(DataInitializer.DEV_USERNAME);
+        SecurityContext securityContext =
+                (SecurityContext)
+                        session.getAttribute(
+                                HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY);
+        assertThat(securityContext.getAuthentication().getName())
+                .isEqualTo(DataInitializer.DEV_USERNAME);
         assertThat(securityContext.getAuthentication().isAuthenticated()).isTrue();
     }
 

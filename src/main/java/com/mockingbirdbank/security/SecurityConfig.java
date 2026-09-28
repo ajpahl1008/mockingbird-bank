@@ -11,8 +11,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * {@code VaadinWebSecurity} was removed in Vaadin 25 in favor of this
- * composable {@code VaadinSecurityConfigurer} style - see
+ * {@code VaadinWebSecurity} was removed in Vaadin 25 in favor of this composable {@code
+ * VaadinSecurityConfigurer} style - see
  * https://vaadin.com/docs/latest/flow/security/enabling-security.
  */
 @EnableWebSecurity
@@ -23,11 +23,11 @@ public class SecurityConfig {
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         // Actuator health has to stay reachable without a session - the k8s
         // readiness probe and CI smoke checks both hit it unauthenticated.
-        http.authorizeHttpRequests(auth -> auth
-                .requestMatchers("/actuator/health/**").permitAll());
+        http.authorizeHttpRequests(auth -> auth.requestMatchers("/actuator/health/**").permitAll());
 
-        http.with(VaadinSecurityConfigurer.vaadin(), configurer ->
-                configurer.loginView(LoginView.class));
+        http.with(
+                VaadinSecurityConfigurer.vaadin(),
+                configurer -> configurer.loginView(LoginView.class));
 
         return http.build();
     }

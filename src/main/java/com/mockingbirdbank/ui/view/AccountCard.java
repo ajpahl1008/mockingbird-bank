@@ -7,13 +7,12 @@ import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.orderedlayout.FlexLayout;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
-
 import java.text.NumberFormat;
 import java.util.Locale;
 
 /**
- * One clickable account tile on the dashboard; the whole card links to
- * that account's transaction history.
+ * One clickable account tile on the dashboard; the whole card links to that account's transaction
+ * history.
  */
 public class AccountCard extends Anchor {
 
@@ -35,7 +34,8 @@ public class AccountCard extends Anchor {
         Span name = new Span(account.getDisplayName());
         name.getStyle().set("font-weight", "600").set("color", "var(--mb-navy)");
 
-        Span tag = new Span(account.getAccountType() == AccountType.CHECKING ? "Checking" : "Savings");
+        Span tag =
+                new Span(account.getAccountType() == AccountType.CHECKING ? "Checking" : "Savings");
         tag.getStyle()
                 .set("font-size", "0.68rem")
                 .set("font-weight", "600")
@@ -43,8 +43,12 @@ public class AccountCard extends Anchor {
                 .set("text-transform", "uppercase")
                 .set("padding", "3px 9px")
                 .set("border-radius", "999px")
-                .set("color", account.getAccountType() == AccountType.CHECKING ? "#1F6F63" : "#7A5A1F")
-                .set("background", account.getAccountType() == AccountType.CHECKING ? "#E7F1EE" : "#F3EBDD");
+                .set(
+                        "color",
+                        account.getAccountType() == AccountType.CHECKING ? "#1F6F63" : "#7A5A1F")
+                .set(
+                        "background",
+                        account.getAccountType() == AccountType.CHECKING ? "#E7F1EE" : "#F3EBDD");
 
         HorizontalLayout header = new HorizontalLayout(name, tag);
         header.setWidthFull();
@@ -63,7 +67,10 @@ public class AccountCard extends Anchor {
                 .set("margin-top", "0.75rem");
 
         Span link = new Span("View transactions →");
-        link.getStyle().set("color", "#1F6F63").set("font-size", "0.8rem").set("font-weight", "500")
+        link.getStyle()
+                .set("color", "#1F6F63")
+                .set("font-size", "0.8rem")
+                .set("font-weight", "500")
                 .set("margin-top", "0.85rem");
 
         VerticalLayout body = new VerticalLayout(header, number, balance, link);

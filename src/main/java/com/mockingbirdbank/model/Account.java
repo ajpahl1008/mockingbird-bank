@@ -1,14 +1,25 @@
 package com.mockingbirdbank.model;
 
-import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import org.hibernate.annotations.BatchSize;
 
 @Entity
 @Table(name = "account")
@@ -36,17 +47,30 @@ public class Account {
     /** Display name, e.g. "Vacation Savings". */
     private String nickname;
 
+    // No default here: Hibernate always hydrates this from the DB, and the only
+    // in-app constructor always sets it explicitly, so a default would be dead code.
     @Column(nullable = false, precision = 14, scale = 2)
-    private BigDecimal balance = BigDecimal.ZERO;
+    private BigDecimal balance;
 
     @Column(nullable = false)
     private LocalDate openedAt;
 
+    // Without this, iterating several accounts and touching each one's lazy
+    // transactions collection issues one SELECT per account (classic N+1).
+    // BatchSize lets Hibernate fetch up to 20 sibling accounts' transactions
+    // in a single "WHERE account_id IN (...)" query instead.
+    // See AccountTransactionQueryPerformanceTest for the regression guard.
     @OneToMany(mappedBy = "account", cascade = CascadeType.ALL, orphanRemoval = true)
+    @BatchSize(size = 20)
     private List<Transaction> transactions = new ArrayList<>();
 
-    public Account(AccountHolder holder, String accountNumber, AccountType accountType,
-                    String nickname, BigDecimal balance, LocalDate openedAt) {
+    public Account(
+            AccountHolder holder,
+            String accountNumber,
+            AccountType accountType,
+            String nickname,
+            BigDecimal balance,
+            LocalDate openedAt) {
         this.holder = holder;
         this.accountNumber = accountNumber;
         this.accountType = accountType;
