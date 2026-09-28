@@ -1,0 +1,73 @@
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # A newly published release is often where a supply-chain compromise or a
+    # regression first shows up; waiting lets the community/maintainers catch
+    # it before it lands here. Longer wait for major bumps, since those carry
+    # the most risk and the least urgency.
+    cooldown:
+      default-days: 5
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    groups:
+      test-and-quality-tooling:
+        patterns:
+          - "org.junit*"
+          - "org.mockito*"
+          - "com.diffplug.spotless*"
+          - "de.aaschmid.cpd*"
+          - "org.gradle.test-retry*"
+    labels:
+      - "dependencies"
+      - "gradle"
+
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 5
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    labels:
+      - "dependencies"
+      - "frontend"
+
+  - package-ecosystem: "npm"
+    directory: "/qa"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 5
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
+    labels:
+      - "dependencies"
+      - "qa"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 5
+      semver-major-days: 14
+    labels:
+      - "dependencies"
+      - "docker"
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 5
+    labels:
+      - "dependencies"
+      - "ci"

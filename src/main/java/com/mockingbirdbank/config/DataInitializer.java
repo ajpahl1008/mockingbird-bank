@@ -68,10 +68,13 @@ public class DataInitializer implements CommandLineRunner {
         String devPassword = System.getenv().getOrDefault(DEV_PASSWORD_ENV, DEV_PASSWORD_DEFAULT);
         appUserRepository.save(
                 new AppUser(DEV_USERNAME, passwordEncoder.encode(devPassword), holder));
+        // Never log the password itself, even for a local dev seed - anyone who sets
+        // MOCKINGBIRD_DEV_PASSWORD to a real password they reuse elsewhere shouldn't have it
+        // land in plaintext log output. AGENTS.md documents the default for local dev.
         log.info(
-                "Seeded DEMO login for local/dev use only - username: {}, password: {} (override via {})",
+                "Seeded DEMO login for local/dev use only - username: {} (see AGENTS.md for the"
+                        + " password, or set it via {})",
                 DEV_USERNAME,
-                devPassword,
                 DEV_PASSWORD_ENV);
 
         Account checking =

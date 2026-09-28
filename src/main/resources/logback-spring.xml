@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Same structure as Spring Boot's own default logback config (defaults.xml +
+  console-appender.xml + root), but with %msg/%m redirected through
+  ScrubbingMessageConverter so every formatted log line - not just the ones a
+  developer remembers to scrub by hand - gets checked for password/token/card
+  patterns before it's written anywhere. See that class for what it redacts.
+-->
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+
+    <conversionRule
+        conversionWord="msg"
+        converterClass="com.mockingbirdbank.config.logging.ScrubbingMessageConverter" />
+    <conversionRule
+        conversionWord="m"
+        converterClass="com.mockingbirdbank.config.logging.ScrubbingMessageConverter" />
+
+    <include resource="org/springframework/boot/logging/logback/console-appender.xml" />
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE" />
+    </root>
+</configuration>

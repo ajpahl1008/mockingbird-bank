@@ -150,6 +150,41 @@ every commit. It's wired up automatically the first time you run
 `./gradlew build` (via the `installGitHooks` task) - no manual `git config`
 step needed.
 
+## Security & CI
+
+- **CI** (`.github/workflows/ci.yml`) runs `./gradlew build` on every push/PR to
+  `master`.
+- **CodeQL** (`.github/workflows/codeql.yml`) runs static security analysis on
+  every push/PR plus a weekly schedule; results land in the repo's Security
+  tab.
+- **Secret scanning**: GitHub's native secret scanning + push protection are
+  enabled on this repo, plus `.github/workflows/secret-scan.yml` runs
+  [gitleaks](https://github.com/gitleaks/gitleaks) on every push/PR as a
+  second, independently-configured check.
+- **DAST** (`.github/workflows/dast.yml`) builds a production-mode jar, boots
+  it against a real Postgres, and runs an OWASP ZAP baseline scan against it
+  on every push to `master` and weekly; the HTML/JSON report is uploaded as a
+  workflow artifact for manual triage (it doesn't fail the build - baseline
+  findings need a human to separate "noise" from "actual problem").
+- **Dependabot** (`.github/dependabot.yml`) covers Gradle, both npm projects
+  (root and `qa/`), Docker, and GitHub Actions, weekly, with a cooldown period
+  (3-14 days depending on SemVer bump size) so a newly published version has
+  time for the community to catch a compromised or broken release before it
+  shows up here as a PR.
+- **CODEOWNERS** (`.github/CODEOWNERS`) requires review from the repo owner on
+  every path.
+- **Branch protection** on `master` requires the CI status check to pass,
+  blocks force-pushes and branch deletion, and requires conversation
+  resolution; repo admins can still bypass it for direct pushes when needed.
+- **Log scrubbing**: `logback-spring.xml` routes every log message through
+  `ScrubbingMessageConverter`
+  (`src/main/java/com/mockingbirdbank/config/logging/`), which redacts
+  password/token/API-key-shaped `key=value` pairs, `Authorization: Bearer/Basic`
+  headers, and card-number-like digit sequences before a line is written
+  anywhere - not just at individual call sites. `DataInitializer` itself no
+  longer logs the seeded demo password (see git history if curious what that
+  looked like before).
+
 ## Project structure
 
 ```
