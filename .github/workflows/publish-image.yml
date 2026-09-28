@@ -96,12 +96,17 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          deployment_id=$(gh api "repos/${{ github.repository }}/deployments" \
-            -f ref="${{ github.sha }}" \
-            -f environment=production \
-            -F auto_merge=false \
-            -f description="Smoke test for ${{ env.IMAGE_NAME }}:${{ needs.publish.outputs.sha_tag }}" \
-            --jq .id)
+          # required_contexts must be sent as an explicit empty array (not omitted) - the
+          # Deployments API otherwise defaults it to this ref's current commit-status contexts
+          # and returns 409 Conflict whenever any of them (CI, CodeQL, DAST, Secret scan, ... -
+          # all running in parallel with this workflow, not a prerequisite for it) is still
+          # pending or has failed for an unrelated reason. That's a raw JSON body, not
+          # per-field -f/-F, hence --input here instead.
+          payload=$(jq -n \
+            --arg ref "${{ github.sha }}" \
+            --arg description "Smoke test for ${{ env.IMAGE_NAME }}:${{ needs.publish.outputs.sha_tag }}" \
+            '{ref: $ref, environment: "production", auto_merge: false, required_contexts: [], description: $description}')
+          deployment_id=$(echo "$payload" | gh api "repos/${{ github.repository }}/deployments" --input - --jq .id)
           echo "id=$deployment_id" >> "$GITHUB_OUTPUT"
           gh api "repos/${{ github.repository }}/deployments/$deployment_id/statuses" \
             -f state=in_progress \
