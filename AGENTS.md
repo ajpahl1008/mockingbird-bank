@@ -77,6 +77,11 @@ Includes fast unit tests (Mockito-based service/model tests) and slower
 context against a real Postgres container - Docker must be running. Test
 reports land in `build/reports/tests/test/index.html`.
 
+Every run also writes `build/reports/tests/test/timings.txt`, a per-test-method
+duration report sorted slowest-first, and logs a warning for any test over 10s
+- a lightweight way to notice the suite (or one test) getting slower over time
+without a dedicated test-analytics platform.
+
 To run a single test class:
 
 ```

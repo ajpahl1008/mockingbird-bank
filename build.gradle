@@ -202,6 +202,52 @@ tasks.named('check') {
 
 test {
     useJUnitPlatform()
+    // Per-test PASSED/FAILED/SKIPPED lines (with duration) in the console output,
+    // instead of only a final pass/fail summary.
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+    }
+}
+
+// Tracks per-test-method duration and writes a "slowest tests" report on every
+// run, so the suite's performance is visible over time instead of only whether
+// it passed. Warns (doesn't fail the build) on anything unexpectedly slow -
+// the Testcontainers-backed integration tests legitimately take a few seconds
+// for container startup, so a hard failure here would be noise, not signal.
+def testStartNanos = new java.util.concurrent.ConcurrentHashMap()
+def testDurationsMs = new java.util.concurrent.ConcurrentLinkedQueue()
+def slowTestThresholdMs = 10_000L
+
+tasks.named('test') {
+    beforeTest { descriptor -> testStartNanos[descriptor] = System.nanoTime() }
+
+    afterTest { descriptor, result ->
+        def start = testStartNanos.remove(descriptor)
+        if (start == null) {
+            return
+        }
+        long durationMs = (System.nanoTime() - start) / 1_000_000L
+        testDurationsMs << [name: "${descriptor.className}.${descriptor.name}", ms: durationMs]
+        if (durationMs > slowTestThresholdMs) {
+            logger.warn(
+                    "SLOW TEST (${durationMs}ms, over the ${slowTestThresholdMs}ms tracking "
+                            + "threshold): ${descriptor.className}.${descriptor.name}")
+        }
+    }
+
+    doLast {
+        def sorted = testDurationsMs.toList().sort { -it.ms }
+        def reportFile = layout.buildDirectory.file("reports/tests/test/timings.txt").get().asFile
+        reportFile.parentFile.mkdirs()
+        def header = "Slowest tests (of ${sorted.size()} total), sorted descending by duration:\n\n"
+        def lines = sorted.collect { "${it.ms}ms\t${it.name}" }.join("\n")
+        reportFile.text = header + lines + "\n"
+        logger.lifecycle("Test timing report written to ${reportFile}")
+        if (!sorted.isEmpty()) {
+            logger.lifecycle("Slowest test: ${sorted[0].ms}ms - ${sorted[0].name}")
+        }
+    }
 }
 
 // Required by Harness CI Test Intelligence (TI) so it can inject its call-graph
