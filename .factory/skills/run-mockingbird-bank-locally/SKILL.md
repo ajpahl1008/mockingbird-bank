@@ -15,22 +15,40 @@ you don't already have one reachable.
 - Docker, for either a throwaway local Postgres (below) or for running the test suite's
   Testcontainers-backed integration tests
 
+Alternatively, skip local prerequisites entirely with the dev container
+(`.devcontainer/`), which has JDK 21, Node, Docker CLI, and Postgres already
+wired together - see step 2a below.
+
 ## 2. Stand up PostgreSQL
 
-If you already have a Postgres reachable at `localhost:5432` with a database named
-`mydatabase` (user `admin` / password `secret`), skip this step - those are the defaults in
-`src/main/resources/application.yml`.
-
-Otherwise, start a disposable one:
-
 ```bash
-docker run --rm -d --name mockingbird-postgres \
-  -e POSTGRES_USER=admin -e POSTGRES_PASSWORD=secret -e POSTGRES_DB=mydatabase \
-  -p 5432:5432 postgres:16-alpine
+docker compose up -d
 ```
+
+This starts a `postgres:16-alpine` matching the defaults in
+`src/main/resources/application.yml` (`localhost:5432`, database
+`mydatabase`, user `admin` / password `secret`), with a named volume so data
+survives a restart. `docker compose down` stops it (`-v` to also drop the
+volume). Skip this step if you already have a Postgres reachable at those
+same defaults.
 
 Flyway creates the schema automatically the first time the app starts against it - no manual
 migration step needed.
+
+### 2a. Or: use the dev container instead
+
+```bash
+npx @devcontainers/cli up --workspace-folder .
+npx @devcontainers/cli exec --workspace-folder . -- ./gradlew build
+```
+
+(Or, in VS Code: "Dev Containers: Reopen in Container".) This gets you JDK 21,
+Node, the Docker CLI (via `docker-outside-of-docker`, so Testcontainers-backed
+tests work), and the same Postgres service from step 2 - already running and
+already reachable - without installing anything on the host beyond Docker
+itself. Ports 8080 and 5432 are published, so `bootRun` and a host-side
+`curl localhost:8080/actuator/health` both work normally. Skip straight to
+step 3 once it's up.
 
 ## 3. Build and run
 

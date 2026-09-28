@@ -11,11 +11,19 @@ For architecture, deeper conventions, and agent-oriented setup/build/test instru
 
 Requires JDK 21 and a reachable PostgreSQL instance (defaults to
 `localhost:5432/mydatabase`, user `admin` / password `secret` - see
-`src/main/resources/application.yml`).
+`src/main/resources/application.yml`). `docker compose up -d` starts a
+matching local Postgres if you don't already have one.
 
 ```bash
+docker compose up -d   # local Postgres, if you need one
 ./gradlew bootRun
 ```
+
+Prefer not to install JDK 21/Postgres locally at all? Open this repo in the
+dev container instead (`.devcontainer/` - "Dev Containers: Reopen in
+Container" in VS Code, or `npx @devcontainers/cli up --workspace-folder .`
+from a terminal): it has everything above pre-installed and pre-wired
+together. See [AGENTS.md](AGENTS.md#dev-container) for details.
 
 Open http://localhost:8080 and sign in with the seeded demo login:
 

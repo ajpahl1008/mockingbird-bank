@@ -1,0 +1,27 @@
+# Local dependency services (currently just Postgres). Run `docker compose up -d` and
+# the app's defaults in src/main/resources/application.yml (localhost:5432/mydatabase,
+# admin/secret) work with no further configuration - see AGENTS.md and the
+# run-mockingbird-bank-locally skill for the full local dev workflow.
+#
+# This is *not* used for CI (integration tests use Testcontainers, which starts and tears
+# down its own Postgres per test run - see ApplicationSmokeTest) or for the .devcontainer,
+# which extends this same postgres service instead of duplicating it.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: mydatabase
+    ports:
+      - "5432:5432"
+    volumes:
+      - mockingbird-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d mydatabase"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  mockingbird-postgres-data:

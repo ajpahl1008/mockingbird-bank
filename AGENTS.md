@@ -28,6 +28,29 @@ registration; it seeds one demo account holder on first run (see
 - A reachable PostgreSQL instance if you want to run the app itself (`bootRun`);
   not required just to build or run the unit/integration test suite.
 
+### Dev container
+
+`.devcontainer/` gives you all of the above pre-installed (JDK 21, Node,
+Docker CLI, Postgres) without touching your host machine. In VS Code, use
+"Dev Containers: Reopen in Container"; from a plain terminal:
+
+```
+npx @devcontainers/cli up --workspace-folder .
+npx @devcontainers/cli exec --workspace-folder . -- ./gradlew build
+```
+
+It builds on `mcr.microsoft.com/devcontainers/java:1-21-bookworm`, adds Node
+via a devcontainer feature, and uses the `docker-outside-of-docker` feature so
+Testcontainers-backed tests can start sibling containers against the host's
+Docker daemon (`TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal` in
+`.devcontainer/docker-compose.yml` is what makes the reaper/sibling containers
+reachable from inside the dev container). `.devcontainer/docker-compose.yml`
+merges with the root `docker-compose.yml`, so the same Postgres service
+definition is reused rather than duplicated - it starts automatically and
+`bootRun` inside the container reaches it at `postgres:5432`. Ports 8080 and
+5432 are published to the host, so `curl localhost:8080/actuator/health`
+works from outside the container too.
+
 ## Build
 
 ```
@@ -40,9 +63,22 @@ command CI and this repo's pre-commit hook both rely on.
 
 ## Run locally
 
-The app needs a Postgres connection. Either point it at an existing instance via
-env vars, or copy `.env.example` to `.env` and adjust it (see that file's
-comments) if you're running via `runDockerImage.zsh`.
+The app needs a Postgres connection. The quickest way to get one with the
+right credentials/database name already set up:
+
+```
+docker compose up -d
+```
+
+`docker-compose.yml` at the repo root starts a `postgres:16-alpine` matching
+the defaults in `src/main/resources/application.yml` (`localhost:5432`,
+database `mydatabase`, user `admin` / password `secret`), with a named volume
+so data survives a restart. Stop it with `docker compose down` (add `-v` to
+also drop the volume and start from an empty database next time).
+
+Alternatively, point the app at any other reachable Postgres via env vars, or
+copy `.env.example` to `.env` and adjust it if you're running via
+`runDockerImage.zsh`:
 
 ```
 SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/mydatabase \
@@ -51,11 +87,10 @@ SPRING_DATASOURCE_PASSWORD=secret \
 ./gradlew bootRun
 ```
 
-Without those env vars it falls back to the same defaults (see
-`src/main/resources/application.yml`), so `./gradlew bootRun` alone works if you
-already have a local Postgres on `localhost:5432` with those credentials.
-Flyway migrates the schema automatically on startup. The app listens on
-`:8080` (override with `SERVER_PORT`).
+Without those env vars it falls back to the same defaults, so `./gradlew
+bootRun` alone works once `docker compose up -d` (or any Postgres matching
+those defaults) is running. Flyway migrates the schema automatically on
+startup. The app listens on `:8080` (override with `SERVER_PORT`).
 
 ### Demo login (local/dev only)
 

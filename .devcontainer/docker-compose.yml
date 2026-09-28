@@ -1,0 +1,39 @@
+# Merged with ../docker-compose.yml by devcontainer.json's dockerComposeFile
+# array, so `postgres` here is the exact same service definition local dev
+# without a devcontainer uses - no duplicated config to drift out of sync.
+#
+# Because ../docker-compose.yml is listed first in devcontainer.json, Compose
+# resolves every relative path in *both* files against the repo root, not
+# against this file's own .devcontainer/ directory - hence "context:
+# .devcontainer" and ".:/workspace" below instead of the "." and ".." you'd
+# expect from this file alone.
+services:
+  app:
+    build:
+      context: .devcontainer
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace:cached
+    command: sleep infinity
+    # forwardPorts in devcontainer.json only forwards while a VS
+    # Code/editor client is actually attached; publishing here too means
+    # `./gradlew bootRun` is reachable at localhost:8080 from plain
+    # devcontainer-CLI or docker-compose usage as well.
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/mydatabase
+      SPRING_DATASOURCE_USERNAME: admin
+      SPRING_DATASOURCE_PASSWORD: secret
+      # Testcontainers-backed tests (ApplicationSmokeTest etc.) use the
+      # docker-outside-of-docker socket to start sibling containers - Ryuk
+      # (its resource reaper) and the ad-hoc Postgres they spin up. Those
+      # land on Docker's default bridge network, which this container (on
+      # the compose-created project network instead) can't route to
+      # directly; host.docker.internal is Docker Desktop's stable route back
+      # through the host for exactly this "container reaching a sibling
+      # container's published port" case.
+      TESTCONTAINERS_HOST_OVERRIDE: host.docker.internal

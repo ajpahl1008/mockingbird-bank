@@ -1,0 +1,39 @@
+{
+  "name": "Mockingbird Bank",
+  "dockerComposeFile": ["../docker-compose.yml", "docker-compose.yml"],
+  "service": "app",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "20" },
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+
+  "forwardPorts": [8080, 5432],
+  "portsAttributes": {
+    "8080": { "label": "Mockingbird Bank (Vaadin UI)" },
+    "5432": { "label": "PostgreSQL" }
+  },
+
+  // git refuses to operate on a bind-mounted repo whose files are owned by a
+  // different UID than the container user (the host UID almost never
+  // matches "vscode"'s), failing with "detected dubious ownership" - which
+  // build.gradle's installGitHooks task then surfaces as a generic "not in
+  // a git directory" error. Trusting /workspace here, then warming the
+  // Gradle wrapper/dependency cache, so the first `./gradlew build` a
+  // developer runs isn't also paying for every download.
+  "postCreateCommand": "git config --global --add safe.directory /workspace && ./gradlew --version",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "vscjava.vscode-java-pack",
+        "vaadin.vaadin-vscode",
+        "redhat.vscode-yaml"
+      ]
+    }
+  },
+
+  "remoteUser": "vscode"
+}
