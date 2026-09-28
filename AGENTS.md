@@ -96,6 +96,22 @@ To run a single test class:
 ./gradlew test --tests "com.mockingbirdbank.service.AccountServiceTest"
 ```
 
+### Test coverage
+
+```
+./gradlew jacocoTestReport              # HTML report at build/reports/jacoco/test/html/index.html
+./gradlew jacocoTestCoverageVerification  # enforced thresholds, part of `check`
+```
+
+The Vaadin UI packages (`com.mockingbirdbank.ui.*`) are declarative view/layout
+code with no branching logic - not meaningfully unit-testable without a full
+browser fixture - so coverage is tracked but not gated there. Instead
+`jacocoTestCoverageVerification` enforces two rules:
+
+- A 30% project-wide line-coverage floor, so overall coverage can't regress.
+- A 90% per-class line-coverage minimum on the business logic packages
+  (`model`, `service`, `security`, `config`), which sit at 94-100% today.
+
 ## Code quality tooling
 
 All of the following are wired into `./gradlew check` (and therefore `build`),
@@ -108,6 +124,7 @@ Run them individually while iterating:
 | Checkstyle | `./gradlew checkstyleMain checkstyleTest` | Naming, imports, complexity, file length, TODO tracking. Config: `config/checkstyle/checkstyle.xml`. |
 | PMD | `./gradlew pmdMain pmdTest` | Dead/unused code (unused fields, params, locals, private methods). Config: `config/pmd/dead-code.xml`. |
 | CPD | `./gradlew cpdCheck` | Copy-paste/duplicate code detection across `src/main/java` and `src/test/java`. |
+| JaCoCo | `./gradlew jacocoTestReport` / `jacocoTestCoverageVerification` | Coverage report (`build/reports/jacoco/test/html/index.html`) and enforced thresholds - see [Test coverage](#test-coverage) below. |
 
 A checked-in Git hook (`.githooks/pre-commit`) runs Spotless + Checkstyle before
 every commit. It's wired up automatically the first time you run

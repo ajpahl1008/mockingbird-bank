@@ -1,5 +1,6 @@
 plugins {
     id 'java'
+    id 'jacoco'
     id 'checkstyle'
     id 'pmd'
     id 'com.diffplug.spotless' version '7.0.2'
@@ -140,6 +141,53 @@ spotless {
 // Fail the build on unformatted code, same as any other verification check.
 tasks.named('check') {
     dependsOn tasks.named('spotlessCheck')
+}
+
+jacoco {
+    toolVersion = '0.8.12'
+}
+
+jacocoTestReport {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required = true
+        html.required = true
+    }
+}
+
+// The Vaadin UI (com.mockingbirdbank.ui.*) is declarative view/layout code with
+// no branching logic - it isn't unit-testable without a full browser fixture,
+// and forcing a blanket percentage across the whole codebase would either be
+// too low to mean anything or push people toward hollow tests just to hit a
+// number. Instead this gates the business logic packages, which already sit
+// at 94-100% line coverage today, at a real, meaningful threshold, plus a low
+// project-wide floor so overall coverage can't silently regress.
+jacocoTestCoverageVerification {
+    dependsOn tasks.named('test')
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                minimum = 0.30
+            }
+        }
+        rule {
+            element = 'CLASS'
+            includes = [
+                'com.mockingbirdbank.model.*',
+                'com.mockingbirdbank.service.*',
+                'com.mockingbirdbank.security.*',
+                'com.mockingbirdbank.config.*',
+            ]
+            limit {
+                counter = 'LINE'
+                minimum = 0.90
+            }
+        }
+    }
+}
+tasks.named('check') {
+    dependsOn tasks.named('jacocoTestCoverageVerification')
 }
 
 // Generates the Javadoc site into build/docs/javadoc on every build and fails
