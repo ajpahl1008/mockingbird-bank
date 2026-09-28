@@ -79,17 +79,17 @@ class AnalyticsEventServiceTest {
         capturedLogs.start();
         eventLogger.addAppender(capturedLogs);
         try {
-            MDC.put(CorrelationIdFilter.MDC_KEY, "test-correlation-id-123");
+            // Deliberately not UUID/token-shaped - a longer, key-shaped literal here trips
+            // gitleaks' generic-api-key heuristic as a false positive (any value works for this
+            // assertion; only its presence in the log line matters).
+            MDC.put(CorrelationIdFilter.MDC_KEY, "test-id");
             AnalyticsEventService analytics = new AnalyticsEventService(new SimpleMeterRegistry());
 
             analytics.track("dashboard.viewed", Map.of());
 
             assertThat(capturedLogs.list)
                     .extracting(ILoggingEvent::getFormattedMessage)
-                    .anySatisfy(
-                            message ->
-                                    assertThat(message)
-                                            .contains("correlationId=test-correlation-id-123"));
+                    .anySatisfy(message -> assertThat(message).contains("correlationId=test-id"));
         } finally {
             eventLogger.detachAppender(capturedLogs);
         }
