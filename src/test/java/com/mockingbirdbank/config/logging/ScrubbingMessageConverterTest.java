@@ -25,7 +25,8 @@ class ScrubbingMessageConverterTest {
 
     @Test
     void redactsTokenWithColonSeparator() {
-        assertThat(convert("Calling upstream API, token: abc.def-GHI_123"))
+        // Fake fixture value, not a real credential.
+        assertThat(convert("Calling upstream API, token: ***************")) // gitleaks:allow
                 .isEqualTo("Calling upstream API, token=***REDACTED***");
     }
 
