@@ -65,6 +65,18 @@ sample transactions so there's real data to look at.
 A 3xx redirect to `/login` for any authenticated route, or a `200` with `"status":"UP"` from
 `GET /actuator/health`, both confirm the app is wired up correctly even without a browser.
 
+To do the above automatically instead of by hand, run:
+
+```bash
+./scripts/run-interactive-qa.sh
+```
+
+It stands up its own throwaway Postgres (port 5433, so it won't collide with or get confused
+by a database you already have on 5432), starts `bootRun`, waits for it to be healthy, then
+uses Playwright to actually drive a Chromium browser through the login → dashboard → account
+detail → sign-out flow above, plus a wrong-password rejection check. Tears everything down on
+exit. First run needs `cd qa && npm install && npx playwright install chromium` once.
+
 ## 5. Run the code-quality suite
 
 All of these run automatically as part of `./gradlew build`/`check`; run them individually

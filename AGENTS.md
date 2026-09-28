@@ -112,6 +112,25 @@ browser fixture - so coverage is tracked but not gated there. Instead
 - A 90% per-class line-coverage minimum on the business logic packages
   (`model`, `service`, `security`, `config`), which sit at 94-100% today.
 
+### Interactive QA (browser-driven smoke test)
+
+```
+./scripts/run-interactive-qa.sh
+```
+
+Unlike `./gradlew test` (which never renders a real page), this drives an
+actual Chromium browser against the actually-running app: starts a throwaway
+Postgres on port 5433 (so it can't collide with or be confused by whatever a
+developer already has on 5432), starts `bootRun` against it, waits for
+`/actuator/health`, then uses Playwright (`qa/`, a separate npm project from
+the Vaadin-managed root `package.json`) to sign in with the seeded demo login,
+confirm the dashboard and an account's transactions render, sign out, and
+confirm a wrong password is rejected. Tears down everything it started
+(app process + Postgres container) on exit, success or failure.
+
+First run needs `cd qa && npm install && npx playwright install chromium`
+(one-time; downloads the Chromium binary Playwright drives).
+
 ## Code quality tooling
 
 All of the following are wired into `./gradlew check` (and therefore `build`),

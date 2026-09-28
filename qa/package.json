@@ -1,0 +1,13 @@
+{
+  "name": "mockingbird-bank-interactive-qa",
+  "private": true,
+  "license": "UNLICENSED",
+  "description": "Playwright-driven interactive QA: drives the real running app through a browser (login, dashboard, account detail) the way a person would. Deliberately kept separate from the root package.json, which the Vaadin Gradle plugin owns and regenerates.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.49.1"
+  }
+}

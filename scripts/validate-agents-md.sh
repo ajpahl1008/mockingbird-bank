@@ -36,11 +36,13 @@ done <<<"$tasks"
 echo "Validating file/directory references in $DOC..."
 # Build-output paths (e.g. build/reports/...) are documented result locations,
 # not repo files, so they're expected to be absent on a fresh checkout.
+# Repo-relative paths in this doc never start with "/" - anything that does
+# (e.g. `/actuator/health`, `/login`) is an HTTP route, not a filesystem path.
 paths=$(grep -oE '`[A-Za-z0-9_./-]+`' "$DOC" \
     | tr -d '`' \
     | grep -E '/' \
     | grep -vE '^build/' \
-    | grep -vE '^/*$' \
+    | grep -vE '^/' \
     | sort -u)
 
 while IFS= read -r p; do

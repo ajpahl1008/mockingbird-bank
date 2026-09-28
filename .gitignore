@@ -4,16 +4,22 @@ out/
 target/
 *.class
 
-# Vaadin generated frontend
+# Vaadin generated frontend (root only - qa/package.json etc. are ours, not
+# Vaadin-generated, and must stay tracked)
 node_modules/
 src/main/frontend/generated/
 vaadin-featureflags.properties
-package.json
-package-lock.json
-tsconfig.json
-types.d.ts
-vite.config.ts
-vite.generated.ts
+/package.json
+/package-lock.json
+/tsconfig.json
+/types.d.ts
+/vite.config.ts
+/vite.generated.ts
+
+# Interactive QA (Playwright) artifacts - see qa/
+qa/node_modules/
+qa/playwright-report/
+qa/test-results/
 
 # IDE
 .idea/
