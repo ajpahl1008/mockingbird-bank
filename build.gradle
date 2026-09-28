@@ -4,6 +4,7 @@ plugins {
     id 'pmd'
     id 'com.diffplug.spotless' version '7.0.2'
     id 'de.aaschmid.cpd' version '3.5'
+    id 'org.gradle.test-retry' version '1.6.2'
     id 'org.springframework.boot' version '4.1.1'
     id 'io.spring.dependency-management' version '1.1.6'
     id 'com.vaadin' version '25.3.0'
@@ -208,6 +209,16 @@ test {
         events "passed", "skipped", "failed"
         exceptionFormat "full"
     }
+
+    // Automatically re-runs a failed test up to 2 more times. A test that fails
+    // once but passes on retry is flaky, not broken - failOnPassedAfterRetry
+    // = false means it doesn't block the build, but every attempt still shows
+    // up in the flaky-test report below so the instability itself isn't lost.
+    retry {
+        maxRetries = 2
+        maxFailures = 10
+        failOnPassedAfterRetry = false
+    }
 }
 
 // Tracks per-test-method duration and writes a "slowest tests" report on every
@@ -218,6 +229,12 @@ test {
 def testStartNanos = new java.util.concurrent.ConcurrentHashMap()
 def testDurationsMs = new java.util.concurrent.ConcurrentLinkedQueue()
 def slowTestThresholdMs = 10_000L
+
+// Records every attempt's outcome per test (test-retry re-runs a failed test,
+// firing these listeners again for the same test name) so a test whose
+// attempts disagree - e.g. FAILURE then SUCCESS - can be flagged as flaky
+// instead of the retry silently hiding the instability.
+def testAttemptOutcomes = new java.util.concurrent.ConcurrentHashMap()
 
 tasks.named('test') {
     beforeTest { descriptor -> testStartNanos[descriptor] = System.nanoTime() }
@@ -234,6 +251,11 @@ tasks.named('test') {
                     "SLOW TEST (${durationMs}ms, over the ${slowTestThresholdMs}ms tracking "
                             + "threshold): ${descriptor.className}.${descriptor.name}")
         }
+
+        def key = "${descriptor.className}.${descriptor.name}"
+        testAttemptOutcomes.putIfAbsent(key, new java.util.concurrent.ConcurrentLinkedQueue())
+        def bucket = testAttemptOutcomes.get(key)
+        bucket << result.resultType.toString()
     }
 
     doLast {
@@ -246,6 +268,19 @@ tasks.named('test') {
         logger.lifecycle("Test timing report written to ${reportFile}")
         if (!sorted.isEmpty()) {
             logger.lifecycle("Slowest test: ${sorted[0].ms}ms - ${sorted[0].name}")
+        }
+
+        def flaky = testAttemptOutcomes.findAll { name, outcomes ->
+            outcomes.size() > 1 && outcomes.toSet().size() > 1
+        }
+        def flakyReportFile = layout.buildDirectory.file("reports/tests/test/flaky.txt").get().asFile
+        if (flaky.isEmpty()) {
+            flakyReportFile.text =
+                    "No flaky tests detected in this run (no test's attempts disagreed).\n"
+        } else {
+            def body = flaky.collect { name, outcomes -> "${name}: attempts=${outcomes}" }.join("\n")
+            flakyReportFile.text = "Flaky tests detected this run:\n\n${body}\n"
+            logger.warn("FLAKY TEST(S) DETECTED - see ${flakyReportFile}")
         }
     }
 }

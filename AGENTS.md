@@ -82,6 +82,14 @@ duration report sorted slowest-first, and logs a warning for any test over 10s
 - a lightweight way to notice the suite (or one test) getting slower over time
 without a dedicated test-analytics platform.
 
+The `test` task also uses the [Gradle Test Retry
+plugin](https://github.com/gradle/test-retry-gradle-plugin): a failing test is
+automatically re-run up to 2 more times, and a test that fails on one attempt
+but passes on another (i.e. flaky, not broken) does not fail the build.
+Every run writes `build/reports/tests/test/flaky.txt` listing any test whose
+attempts disagreed, so instability is visible even though it isn't blocking.
+A clean run with no retries writes a "no flaky tests detected" message there.
+
 To run a single test class:
 
 ```
