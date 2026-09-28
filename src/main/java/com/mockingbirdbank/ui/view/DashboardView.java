@@ -1,5 +1,6 @@
 package com.mockingbirdbank.ui.view;
 
+import com.mockingbirdbank.config.FeatureFlagService;
 import com.mockingbirdbank.model.Account;
 import com.mockingbirdbank.model.AccountHolder;
 import com.mockingbirdbank.service.AccountService;
@@ -29,7 +30,10 @@ public class DashboardView extends VerticalLayout {
 
     private static final NumberFormat USD = NumberFormat.getCurrencyInstance(Locale.US);
 
-    public DashboardView(AccountService accountService) {
+    private final FeatureFlagService featureFlagService;
+
+    public DashboardView(AccountService accountService, FeatureFlagService featureFlagService) {
+        this.featureFlagService = featureFlagService;
         AccountHolder holder = accountService.currentHolder();
         List<Account> accounts = accountService.accountsFor(holder);
         BigDecimal total = accountService.totalBalance(holder);
@@ -38,8 +42,28 @@ public class DashboardView extends VerticalLayout {
         setSpacing(true);
         getStyle().set("background", "var(--mb-ivory)").set("min-height", "100%");
 
+        if (featureFlagService.showWelcomeBanner()) {
+            add(welcomeBanner(holder));
+        }
         add(balanceHero(holder, accounts, total));
         add(accountsSection(accounts));
+    }
+
+    private Div welcomeBanner(AccountHolder holder) {
+        Span banner =
+                new Span(
+                        "Hi "
+                                + holder.getFullName().split(" ")[0]
+                                + " - you're viewing an early preview of the redesigned dashboard.");
+        banner.getStyle()
+                .set("display", "block")
+                .set("background", "var(--mb-navy)")
+                .set("color", "white")
+                .set("border-radius", "12px")
+                .set("padding", "0.9rem 1.5rem")
+                .set("font-size", "0.9rem")
+                .set("font-weight", "500");
+        return new Div(banner);
     }
 
     private Div balanceHero(AccountHolder holder, List<Account> accounts, BigDecimal total) {
@@ -95,7 +119,8 @@ public class DashboardView extends VerticalLayout {
         FlexLayout grid = new FlexLayout();
         grid.setFlexWrap(FlexLayout.FlexWrap.WRAP);
         grid.getStyle().set("gap", "1.25rem");
-        accounts.forEach(account -> grid.add(new AccountCard(account)));
+        boolean showAccountNumber = featureFlagService.showAccountNumberOnDashboard();
+        accounts.forEach(account -> grid.add(new AccountCard(account, showAccountNumber)));
 
         VerticalLayout section = new VerticalLayout(heading, grid);
         section.setPadding(false);

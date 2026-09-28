@@ -32,3 +32,19 @@ server:
 
 vaadin:
   launch-browser: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # health stays public (see SecurityConfig); featureflags is
+        # read-only ops visibility, reachable once authenticated.
+        include: health,featureflags
+
+# Defaults match today's actual behavior - see FeatureFlagsProperties and
+# AGENTS.md's "Feature flags" section. Override per-environment via
+# MOCKINGBIRD_FEATURE_FLAGS_<NAME> env vars, no code change/redeploy needed.
+mockingbird:
+  feature-flags:
+    show-account-number-on-dashboard: true
+    show-welcome-banner: false

@@ -6,6 +6,7 @@ plugins {
     id 'com.diffplug.spotless' version '7.0.2'
     id 'de.aaschmid.cpd' version '3.5'
     id 'org.gradle.test-retry' version '1.6.2'
+    id 'com.autonomousapps.dependency-analysis' version '3.19.2'
     id 'org.springframework.boot' version '4.1.1'
     id 'io.spring.dependency-management' version '1.1.6'
     id 'com.vaadin' version '25.3.0'
@@ -47,7 +48,20 @@ dependencies {
     // no longer triggers it. Postgres dialect support is still a separate
     // Flyway artifact (unbundled since Flyway 10) and must be added too.
     implementation 'org.springframework.boot:spring-boot-starter-flyway'
-    implementation 'org.flywaydb:flyway-database-postgresql'
+    // Postgres dialect support is a runtime SPI plugin Flyway auto-discovers -
+    // nothing in our source compiles against it directly, so runtimeOnly is
+    // the correct (and minimal) scope. Confirmed via `./gradlew buildHealth`.
+    runtimeOnly 'org.flywaydb:flyway-database-postgresql'
+
+    // Referenced directly (SecurityConfig, AccountService/TransactionService's
+    // @Transactional, ScrubbingMessageConverter, and slf4j Logger usage across
+    // the codebase) rather than only through whichever starter happens to
+    // pull them in transitively today - `./gradlew buildHealth` flags exactly
+    // this class of gap. Versions stay managed by Spring Boot's BOM.
+    implementation 'org.springframework:spring-context'
+    implementation 'org.springframework:spring-tx'
+    implementation 'ch.qos.logback:logback-classic'
+    implementation 'org.slf4j:slf4j-api'
 
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
@@ -68,6 +82,92 @@ dependencies {
 vaadin {
     // Flip to true (or set via -Pvaadin.productionMode) when building a deployable jar.
     productionMode = false
+}
+
+// Finds genuinely unused dependencies and dependencies used but only pulled
+// in transitively. Framework "starter"/facade artifacts (Spring Boot,
+// Vaadin, ...) are intentionally never referenced by class name in our code
+// - that's the point of a starter - so without the bundles below the plugin
+// would flag every one of them as "unused" and every framework-internal
+// class we do reference (e.g. `SpringApplication`) as "used transitively,
+// declare it directly", which would mean fighting the framework's own BOM
+// instead of tracking real dependency hygiene. Each bundle below groups a
+// starter with the internals it exists to pull in, so the bundle as a whole
+// is correctly seen as "used" via whichever member we actually reference.
+dependencyAnalysis {
+    issues {
+        all {
+            onUnusedDependencies { severity('fail') }
+            onIncorrectConfiguration { severity('fail') }
+        }
+    }
+    structure {
+        bundle('spring-boot') {
+            includeGroup('org.springframework.boot')
+        }
+        bundle('spring-framework') {
+            includeGroup('org.springframework')
+        }
+        bundle('spring-security') {
+            includeGroup('org.springframework.security')
+            includeDependency('org.springframework.boot:spring-boot-starter-security')
+        }
+        bundle('spring-data') {
+            includeGroup('org.springframework.data')
+            includeDependency('org.springframework.boot:spring-boot-starter-data-jpa')
+        }
+        bundle('hibernate') {
+            includeGroup('org.hibernate.orm')
+            includeGroup('org.hibernate.validator')
+            includeDependency('jakarta.persistence:jakarta.persistence-api')
+            includeDependency('jakarta.validation:jakarta.validation-api')
+            includeDependency('org.springframework.boot:spring-boot-starter-data-jpa')
+        }
+        bundle('web') {
+            includeGroup('org.apache.tomcat.embed')
+            includeDependency('org.springframework:spring-web')
+            includeDependency('io.projectreactor:reactor-core')
+            includeDependency('org.springframework.boot:spring-boot-starter-web')
+        }
+        bundle('logging') {
+            includeGroup('ch.qos.logback')
+            includeGroup('org.apache.logging.log4j')
+            includeDependency('org.slf4j:slf4j-api')
+        }
+        bundle('vaadin') {
+            includeGroup('com.vaadin')
+        }
+        bundle('junit') {
+            includeGroup('org.junit.jupiter')
+            includeGroup('org.junit.platform')
+            includeDependency('org.opentest4j:opentest4j')
+            includeDependency('org.springframework.boot:spring-boot-starter-test')
+        }
+        bundle('test-support') {
+            // Pulled in by spring-boot-starter-test; never referenced by
+            // class name in our tests but genuinely exercised at runtime.
+            includeDependency('org.assertj:assertj-core')
+            includeDependency('org.hamcrest:hamcrest')
+            includeDependency('org.mockito:mockito-core')
+            includeDependency('org.mockito:mockito-junit-jupiter')
+            includeDependency('org.springframework.boot:spring-boot-test')
+            includeDependency('org.springframework:spring-beans')
+            includeDependency('org.springframework:spring-test')
+            includeDependency('org.springframework.boot:spring-boot-starter-test')
+        }
+        bundle('opentelemetry') {
+            // Pulled in transitively by testcontainers for its own tracing;
+            // never referenced by our test code.
+            includeGroup('io.opentelemetry')
+            includeDependency('org.testcontainers:testcontainers-junit-jupiter')
+        }
+        bundle('selenium') {
+            // Pulled in by vaadin-testbench-junit5 to drive a real browser;
+            // TestBench's API is what we call, not Selenium directly.
+            includeGroup('org.seleniumhq.selenium')
+            includeDependency('com.vaadin:vaadin-testbench-junit5')
+        }
+    }
 }
 
 checkstyle {
@@ -249,6 +349,14 @@ tasks.named('check') {
     dependsOn tasks.named('validateAgentsMd')
 }
 
+// Catches genuinely unused dependencies and dependencies used at the wrong
+// scope (e.g. compile-time when only needed at runtime) - see the
+// dependencyAnalysis {} block above for how framework starters are handled
+// so this doesn't just turn into noise about Spring/Vaadin internals.
+tasks.named('check') {
+    dependsOn tasks.named('buildHealth')
+}
+
 test {
     useJUnitPlatform()
     // Per-test PASSED/FAILED/SKIPPED lines (with duration) in the console output,
@@ -348,5 +456,47 @@ gradle.projectsEvaluated {
         filter {
             setFailOnNoMatchingTests(false)
         }
+    }
+}
+
+// Tracks per-task and total build duration on every invocation, the same
+// way the test-timing report above tracks per-test duration: written to
+// disk every run so build performance is visible over time, not just
+// whatever Gradle happens to print to the console for this one build. CI
+// uploads build/reports/build-performance/ as an artifact (see
+// .github/workflows/ci.yml) so a slow trend is visible across runs without
+// needing a separate build-analytics platform.
+def taskDurationsMs = new java.util.concurrent.ConcurrentLinkedQueue()
+def taskStartNanos = new java.util.concurrent.ConcurrentHashMap()
+def buildStartNanos = System.nanoTime()
+def slowBuildThresholdMs = 5 * 60_000L
+
+tasks.configureEach { task ->
+    task.doFirst { taskStartNanos[task.path] = System.nanoTime() }
+    task.doLast {
+        def start = taskStartNanos.remove(task.path)
+        if (start != null) {
+            long ms = (System.nanoTime() - start) / 1_000_000L
+            taskDurationsMs << [name: task.path, ms: ms]
+        }
+    }
+}
+
+gradle.buildFinished {
+    long totalMs = (System.nanoTime() - buildStartNanos) / 1_000_000L
+    def sorted = taskDurationsMs.toList().sort { -it.ms }
+    def reportFile = layout.buildDirectory.file("reports/build-performance/summary.txt").get().asFile
+    reportFile.parentFile.mkdirs()
+    def header = "Total build time: ${totalMs}ms\n\n" +
+            "Slowest tasks (of ${sorted.size()} total), sorted descending by duration. Gradle " +
+            "can run independent tasks concurrently, so individual durations may overlap and " +
+            "sum to more than the total build time above:\n\n"
+    def lines = sorted.take(30).collect { "${it.ms}ms\t${it.name}" }.join("\n")
+    reportFile.text = header + lines + "\n"
+    logger.lifecycle("Build performance report written to ${reportFile} (total: ${totalMs}ms)")
+    if (totalMs > slowBuildThresholdMs) {
+        logger.warn(
+                "SLOW BUILD (${totalMs}ms, over the ${slowBuildThresholdMs}ms tracking "
+                        + "threshold) - see ${reportFile} for the slowest tasks.")
     }
 }

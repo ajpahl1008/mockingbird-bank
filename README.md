@@ -19,6 +19,9 @@ docker compose up -d   # local Postgres, if you need one
 ./gradlew bootRun
 ```
 
+Or, in one command: `./scripts/dev-up.sh` (starts Postgres, waits for it,
+then runs the app).
+
 Prefer not to install JDK 21/Postgres locally at all? Open this repo in the
 dev container instead (`.devcontainer/` - "Dev Containers: Reopen in
 Container" in VS Code, or `npx @devcontainers/cli up --workspace-folder .`

@@ -19,6 +19,15 @@ public class AccountCard extends Anchor {
     private static final NumberFormat USD = NumberFormat.getCurrencyInstance(Locale.US);
 
     public AccountCard(Account account) {
+        this(account, true);
+    }
+
+    /**
+     * @param showAccountNumber gates the masked account number line behind the {@code
+     *     mockingbird.feature-flags.show-account-number-on-dashboard} flag (see FeatureFlagService)
+     *     - off hides it entirely rather than leaving a blank line.
+     */
+    public AccountCard(Account account, boolean showAccountNumber) {
         super("accounts/" + account.getId(), "");
         getStyle()
                 .set("display", "block")
@@ -55,9 +64,6 @@ public class AccountCard extends Anchor {
         header.setJustifyContentMode(FlexLayout.JustifyContentMode.BETWEEN);
         header.setAlignItems(FlexLayout.Alignment.CENTER);
 
-        Span number = new Span(account.getMaskedNumber());
-        number.getStyle().set("color", "var(--mb-text-muted)").set("font-size", "0.8rem");
-
         Span balance = new Span(USD.format(account.getBalance()));
         balance.getStyle()
                 .set("font-family", "Georgia, serif")
@@ -73,9 +79,15 @@ public class AccountCard extends Anchor {
                 .set("font-weight", "500")
                 .set("margin-top", "0.85rem");
 
-        VerticalLayout body = new VerticalLayout(header, number, balance, link);
+        VerticalLayout body = new VerticalLayout(header);
         body.setPadding(false);
         body.setSpacing(false);
+        if (showAccountNumber) {
+            Span number = new Span(account.getMaskedNumber());
+            number.getStyle().set("color", "var(--mb-text-muted)").set("font-size", "0.8rem");
+            body.add(number);
+        }
+        body.add(balance, link);
         add(body);
     }
 }

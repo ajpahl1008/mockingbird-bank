@@ -92,6 +92,13 @@ bootRun` alone works once `docker compose up -d` (or any Postgres matching
 those defaults) is running. Flyway migrates the schema automatically on
 startup. The app listens on `:8080` (override with `SERVER_PORT`).
 
+Or, from a completely fresh clone, one command does both steps (start
+Postgres, wait for it, then `bootRun`):
+
+```
+./scripts/dev-up.sh
+```
+
 ### Demo login (local/dev only)
 
 On an empty database, `DataInitializer` seeds one account holder, a matching
@@ -166,6 +173,53 @@ confirm a wrong password is rejected. Tears down everything it started
 First run needs `cd qa && npm install && npx playwright install chromium`
 (one-time; downloads the Chromium binary Playwright drives).
 
+## Feature flags
+
+`FeatureFlagsProperties` (`src/main/java/com/mockingbirdbank/config/`) binds boolean flags from
+`mockingbird.feature-flags.*` in `application.yml`, each defaulting to today's actual behavior.
+Override one per-environment with a `MOCKINGBIRD_FEATURE_FLAGS_<NAME>` env var (Spring's relaxed
+binding maps it automatically) - no code change or redeploy needed, just a different value for
+that variable (e.g. in a k8s manifest or `docker run -e`). `FeatureFlagService` is the typed,
+call-site-facing API (`showAccountNumberOnDashboard()`, `showWelcomeBanner()`); `DashboardView`
+and `AccountCard` use it to gate two small, genuinely optional pieces of UI. Current values are
+visible read-only at `/actuator/featureflags` (`FeatureFlagsEndpoint`) for ops visibility. Add a
+new flag by adding one field to `FeatureFlagsProperties` (with a default matching current
+behavior) and one accessor on `FeatureFlagService`.
+
+## Releases
+
+- **Release notes** (`.github/workflows/release-drafter.yml`,
+  `.github/release-drafter.yml`) keep a draft GitHub Release up to date on
+  every push to `master`, auto-categorizing merged PRs by label (`bug` ->
+  Bug Fixes, `enhancement`/`feature` -> Features, `dependencies` ->
+  Dependencies, `security` -> Security, `documentation`/`chore` ->
+  Maintenance). Nothing is published automatically - a maintainer reviews
+  the running draft under the repo's Releases tab.
+- **Cutting a release** is one command:
+  ```
+  git tag v1.2.3
+  git push origin v1.2.3
+  ```
+  `.github/workflows/release.yml` publishes that draft as the real GitHub
+  Release for the tag, then builds and pushes a Docker image to GHCR tagged
+  both `v1.2.3` and `latest` (reusing the same `Dockerfile` as
+  `createLocalDockerImage.zsh`).
+
+## Docker image
+
+```
+./createLocalDockerImage.zsh <version>    # build a local image (arm64), e.g. 0.1.0
+./runDockerImage.zsh <version>             # run it, reading datasource config from .env
+./createDockerHubImage.zsh <version>       # multi-arch build + push to Docker Hub (ajpahl1008/mockingbird-bank)
+```
+
+`Dockerfile` is a two-stage build: `./gradlew -Pvaadin.productionMode=true clean
+bootJar` in a JDK image, then just the resulting jar copied into a slim JRE
+image. `createDockerHubImage.zsh` needs `docker login` done first and pushes
+to Docker Hub directly - there's no CI automation for that push yet (see
+`.github/workflows/publish-image.yml` for the closest automated equivalent,
+which publishes to GHCR on every push to `master` instead).
+
 ## Code quality tooling
 
 All of the following are wired into `./gradlew check` (and therefore `build`),
@@ -187,8 +241,20 @@ step needed.
 
 ## Security & CI
 
-- **CI** (`.github/workflows/ci.yml`) runs `./gradlew build` on every push/PR to
-  `master`.
+- **CI** (`.github/workflows/ci.yml`) runs on every push/PR to `master` as two
+  parallel jobs rather than one: `fast-checks` (compile plus every
+  static-analysis task that doesn't need a database - Spotless, Checkstyle,
+  PMD, CPD, dependency-analysis `buildHealth`, AGENTS.md validation, Javadoc)
+  reports in well under a minute, while `test` (the full `./gradlew build`,
+  including the Testcontainers-backed integration tests) runs at the same
+  time rather than after it. A lint mistake shows up fast without waiting
+  behind the slower suite.
+- **Build performance tracking**: every Gradle invocation writes
+  `build/reports/build-performance/summary.txt` - total wall-clock build
+  time plus the slowest individual tasks, the same pattern as the per-test
+  timing report below - and warns (doesn't fail) if the build takes longer
+  than 5 minutes. Both CI jobs upload it as a `build-performance-*` artifact
+  so a slow trend is visible across runs.
 - **CodeQL** (`.github/workflows/codeql.yml`) runs static security analysis on
   every push/PR plus a weekly schedule; results land in the repo's Security
   tab.
@@ -208,6 +274,12 @@ step needed.
   shows up here as a PR.
 - **CODEOWNERS** (`.github/CODEOWNERS`) requires review from the repo owner on
   every path.
+- **Automated PR review**: `.github/workflows/droid-review.yml` runs Factory
+  Droid's automated code review (including a security-focused pass) on every
+  non-draft PR; `.github/workflows/droid.yml` lets `@droid` be mentioned in
+  an issue/PR comment to invoke it ad hoc. Both need a `FACTORY_API_KEY`
+  repository secret and the Factory Droid GitHub App installed to actually
+  run.
 - **Branch protection** on `master` requires the CI status check to pass,
   blocks force-pushes and branch deletion, and requires conversation
   resolution; repo admins can still bypass it for direct pushes when needed.

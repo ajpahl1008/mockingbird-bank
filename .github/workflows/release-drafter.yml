@@ -1,0 +1,24 @@
+name: Release Drafter
+
+# Keeps a draft GitHub Release up to date with every push to master,
+# auto-categorizing merged PRs by label (see .github/release-drafter.yml).
+# Nothing is published here - a maintainer reviews the draft and either
+# edits+publishes it by hand, or tags a commit (see release.yml) to cut it
+# for real.
+on:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+jobs:
+  update_release_draft:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    steps:
+      - uses: release-drafter/release-drafter@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
