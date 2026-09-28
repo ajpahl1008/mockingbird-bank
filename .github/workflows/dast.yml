@@ -26,7 +26,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U admin"
+          --health-cmd="pg_isready -U admin -d mydatabase"
           --health-interval=5s
           --health-timeout=5s
           --health-retries=10
@@ -71,6 +71,10 @@ jobs:
           # app vs. an actual exploitable flaw) rather than block every
           # push; the report artifact below is what gets reviewed.
           fail_action: false
+          # The job token only has `contents: read` (see permissions above),
+          # so let the artifact upload below be the report mechanism instead
+          # of granting `issues: write` just for this.
+          allow_issue_writing: false
 
       - name: Stop the app
         if: always()
