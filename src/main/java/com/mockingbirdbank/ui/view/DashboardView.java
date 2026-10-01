@@ -47,7 +47,7 @@ public class DashboardView extends VerticalLayout {
 
         setPadding(true);
         setSpacing(true);
-        getStyle().set("background", "var(--mb-ivory)").set("min-height", "100%");
+        getStyle().set("background", "var(--mb-page-bg)").set("min-height", "100%");
 
         if (featureFlagService.showWelcomeBanner()) {
             add(welcomeBanner(holder));
@@ -65,7 +65,7 @@ public class DashboardView extends VerticalLayout {
         banner.getStyle()
                 .set("display", "block")
                 .set("background", "var(--mb-navy)")
-                .set("color", "white")
+                .set("color", "var(--mb-text-on-navy)")
                 .set("border-radius", "12px")
                 .set("padding", "0.9rem 1.5rem")
                 .set("font-size", "0.9rem")
@@ -81,7 +81,7 @@ public class DashboardView extends VerticalLayout {
                 .set("font-family", "Georgia, serif")
                 .set("font-size", "2.6rem")
                 .set("font-weight", "600")
-                .set("color", "var(--mb-navy)");
+                .set("color", "var(--mb-text)");
 
         Span sub = new Span("Across " + accounts.size() + " accounts");
         sub.getStyle().set("color", "var(--mb-text-muted)").set("font-size", "0.85rem");
@@ -92,7 +92,7 @@ public class DashboardView extends VerticalLayout {
 
         Span holderLabel = eyebrow("Account holder");
         Span holderName = new Span(holder.getFullName());
-        holderName.getStyle().set("font-weight", "600").set("color", "var(--mb-navy)");
+        holderName.getStyle().set("font-weight", "600").set("color", "var(--mb-text)");
         Span primaryAccount = holderPrimaryAccountLine(accounts);
 
         VerticalLayout right = new VerticalLayout(holderLabel, holderName, primaryAccount);
@@ -105,7 +105,7 @@ public class DashboardView extends VerticalLayout {
         hero.setJustifyContentMode(FlexLayout.JustifyContentMode.BETWEEN);
         hero.setAlignItems(FlexLayout.Alignment.END);
         hero.getStyle()
-                .set("background", "white")
+                .set("background", "var(--mb-surface)")
                 .set("border", "1px solid var(--mb-hairline)")
                 .set("border-radius", "16px")
                 .set("padding", "1.75rem 2.5rem");

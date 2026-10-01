@@ -33,18 +33,18 @@ public class AccountCard extends Anchor {
                 .set("display", "block")
                 .set("text-decoration", "none")
                 .set("color", "inherit")
-                .set("background", "white")
+                .set("background", "var(--mb-surface)")
                 .set("border", "1px solid var(--mb-hairline)")
                 .set("border-radius", "12px")
                 .set("padding", "1.4rem 1.5rem")
                 .set("width", "280px")
-                .set("box-shadow", "0 1px 2px rgba(18,35,63,0.05)");
+                .set("box-shadow", "0 1px 2px var(--mb-shadow)");
 
         Span name = new Span(account.getDisplayName());
-        name.getStyle().set("font-weight", "600").set("color", "var(--mb-navy)");
+        name.getStyle().set("font-weight", "600").set("color", "var(--mb-text)");
 
-        Span tag =
-                new Span(account.getAccountType() == AccountType.CHECKING ? "Checking" : "Savings");
+        boolean isChecking = account.getAccountType() == AccountType.CHECKING;
+        Span tag = new Span(isChecking ? "Checking" : "Savings");
         tag.getStyle()
                 .set("font-size", "0.68rem")
                 .set("font-weight", "600")
@@ -52,12 +52,8 @@ public class AccountCard extends Anchor {
                 .set("text-transform", "uppercase")
                 .set("padding", "3px 9px")
                 .set("border-radius", "999px")
-                .set(
-                        "color",
-                        account.getAccountType() == AccountType.CHECKING ? "#1F6F63" : "#7A5A1F")
-                .set(
-                        "background",
-                        account.getAccountType() == AccountType.CHECKING ? "#E7F1EE" : "#F3EBDD");
+                .set("color", isChecking ? "var(--mb-positive)" : "var(--mb-savings)")
+                .set("background", isChecking ? "var(--mb-positive-bg)" : "var(--mb-savings-bg)");
 
         HorizontalLayout header = new HorizontalLayout(name, tag);
         header.setWidthFull();
@@ -69,12 +65,12 @@ public class AccountCard extends Anchor {
                 .set("font-family", "Georgia, serif")
                 .set("font-size", "1.6rem")
                 .set("font-weight", "600")
-                .set("color", "var(--mb-navy)")
+                .set("color", "var(--mb-text)")
                 .set("margin-top", "0.75rem");
 
         Span link = new Span("View transactions →");
         link.getStyle()
-                .set("color", "#1F6F63")
+                .set("color", "var(--mb-positive)")
                 .set("font-size", "0.8rem")
                 .set("font-weight", "500")
                 .set("margin-top", "0.85rem");

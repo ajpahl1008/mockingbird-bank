@@ -47,7 +47,7 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
         this.analytics = analytics;
         setPadding(true);
         setSpacing(true);
-        getStyle().set("background", "var(--mb-ivory)").set("min-height", "100%");
+        getStyle().set("background", "var(--mb-page-bg)").set("min-height", "100%");
     }
 
     @Override
@@ -71,7 +71,7 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
     private Anchor backLink() {
         Anchor back = new Anchor("accounts", "← Back to accounts");
         back.getStyle()
-                .set("color", "#1F6F63")
+                .set("color", "var(--mb-positive)")
                 .set("font-weight", "600")
                 .set("font-size", "0.85rem")
                 .set("text-decoration", "none");
@@ -84,7 +84,7 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
                 .set("font-family", "Georgia, serif")
                 .set("font-size", "1.4rem")
                 .set("font-weight", "600")
-                .set("color", "var(--mb-navy)");
+                .set("color", "var(--mb-text)");
         Span meta =
                 new Span(
                         "Account "
@@ -109,7 +109,7 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
                 .set("font-family", "Georgia, serif")
                 .set("font-size", "2rem")
                 .set("font-weight", "600")
-                .set("color", "var(--mb-navy)");
+                .set("color", "var(--mb-text)");
 
         VerticalLayout right = new VerticalLayout(label, balance);
         right.setPadding(false);
@@ -121,7 +121,7 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
         header.setJustifyContentMode(FlexLayout.JustifyContentMode.BETWEEN);
         header.setAlignItems(FlexLayout.Alignment.CENTER);
         header.getStyle()
-                .set("background", "white")
+                .set("background", "var(--mb-surface)")
                 .set("border", "1px solid var(--mb-hairline)")
                 .set("border-radius", "16px")
                 .set("padding", "1.5rem 2rem");
@@ -142,7 +142,11 @@ public class AccountDetailView extends VerticalLayout implements HasUrlParameter
                             Span amount = new Span(USD.format(tx.getAmount()));
                             amount.getStyle()
                                     .set("font-weight", "600")
-                                    .set("color", tx.isCredit() ? "#1F6F63" : "var(--mb-navy)");
+                                    .set(
+                                            "color",
+                                            tx.isCredit()
+                                                    ? "var(--mb-positive)"
+                                                    : "var(--mb-text)");
                             return amount;
                         })
                 .setHeader("Amount")

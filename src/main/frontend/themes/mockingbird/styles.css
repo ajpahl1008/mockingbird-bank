@@ -4,6 +4,38 @@ html {
   --mb-ivory-muted: #C9CFDA;
   --mb-text-muted: #6B7280;
   --mb-hairline: #E7E2D3;
+
+  /* Page body background. Kept separate from --mb-ivory (which also colors the
+     wordmark text on the permanently-dark top bar and must stay light even in
+     dark mode) so the two roles can diverge under html[theme~="dark"]. */
+  --mb-page-bg: #F6F4EE;
+  --mb-surface: #FFFFFF;
+  --mb-text: #12233F;
+  --mb-text-on-navy: #FFFFFF;
+  --mb-positive: #1F6F63;
+  --mb-positive-bg: #E7F1EE;
+  --mb-savings: #7A5A1F;
+  --mb-savings-bg: #F3EBDD;
+  --mb-shadow: rgba(18, 35, 63, 0.05);
+}
+
+/* Vaadin/Lumo's standard dark-mode attribute selector - setting theme="dark" on
+   <html> also flips Lumo's own built-in dark palette for free. */
+html[theme~="dark"] {
+  --mb-navy: #0E1A30;
+  --mb-ivory-muted: #A9B4CC;
+  --mb-text-muted: #9AA3B2;
+  --mb-hairline: rgba(246, 244, 238, 0.14);
+
+  --mb-page-bg: #0B1322;
+  --mb-surface: #1A2740;
+  --mb-text: #F6F4EE;
+  --mb-text-on-navy: #F6F4EE;
+  --mb-positive: #6FD3BE;
+  --mb-positive-bg: #163C36;
+  --mb-savings: #E8C27A;
+  --mb-savings-bg: #3A2E14;
+  --mb-shadow: rgba(0, 0, 0, 0.45);
 }
 
 body {
